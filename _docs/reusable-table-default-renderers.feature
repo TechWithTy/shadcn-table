@@ -66,3 +66,33 @@ Feature: Reusable DataTable - Default Cell Renderers
     Given the audio source fails to load
     Then an error state should be displayed with a retry action
     And the table cell should not crash and should remain navigable
+
+
+  # Implementation Notes
+  # - Where headers/cells are rendered:
+  #   - Wrapper: `external/shadcn-table/src/components/data-table/data-table.tsx`
+  #     Uses TanStack `flexRender` to render each column's `header` and `cell`.
+  #
+  # - Example columns with per-cell renderers (date/number/text):
+  #   - Demo: `app/test-external/dynamic-table-test/page.tsx`
+  #     * Date: formats ISO into locale string in `cell`.
+  #     * Numbers: render with `tabular-nums` class.
+  #   - Lead list: `components/tables/lead-list-tables/columns.tsx`
+  #
+  # - Badges / status mapping:
+  #   Implement via `cell: ({ row }) => <Badge variant=...>...</Badge>` pattern in your columns file.
+  #   Put shared mapping in a util (e.g., `external/shadcn-table/src/app/_lib/utils.ts`).
+  #
+  # - Links and avatar+name:
+  #   Use an `anchor` inside `cell` for links; for avatar/name, compose `Avatar` + text.
+  #   Place shared UI in `external/shadcn-table/src/components/ui/*` or your app `components/`.
+  #
+  # - Nested counts + modal details:
+  #   Render a button in `cell` that opens a modal component.
+  #   Example placement for modal: `components/tables/<table>/utils/YourDetailsDialog.tsx`.
+  #   See import style like `components/tables/lead-list-tables/utils/skipLeadsList` in `columns.tsx`.
+  #
+  # - Audio renderer:
+  #   Create a reusable Audio cell component (Play/Pause, progress, speed, mute).
+  #   Place it under `external/shadcn-table/src/components/data-table/renderers/audio-cell.tsx` (suggested),
+  #   then use in a column via `cell: ({ row }) => <AudioCell src={row.original.audioUrl} />`.

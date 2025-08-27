@@ -75,3 +75,49 @@ Feature: Reusable DataTable - Pagination, Selection, and Export
     Given I hide the column "Emails" and reorder columns
     When I export Current Page
     Then the downloaded file should exclude "Emails" and match the visible column order
+
+
+  # Implementation Notes
+  # - Table wrapper with header/body/pagination rendering:
+  #   `external/shadcn-table/src/components/data-table/data-table.tsx`
+  #   `external/shadcn-table/src/components/data-table/data-table-pagination.tsx`
+  #
+  # - Pagination (client or server):
+  #   TanStack Table state:
+  #   - include `getPaginationRowModel()`
+  #   - control via `state.pagination` and `onPaginationChange`
+  #   Example (server-like) pagination wired here:
+  #   - `components/tables/lead-list-tables/lead-list-data-table.tsx`
+  #     Uses `pageIndex/pageSize` state and slices data; set `manualPagination: true`.
+  #   Demo example (client-side):
+  #   - `app/test-external/dynamic-table-test/page.tsx` with `initialState.pagination`.
+  #
+  # - Row selection:
+  #   Add `enableRowSelection: true` on the table or per column with a checkbox cell/header.
+  #   Use the selection header/cell pattern as in:
+  #   - `components/tables/lead-list-tables/columns.tsx` (checkbox in header and row).
+  #   Action bar for selected rows:
+  #   - `external/shadcn-table/src/components/data-table/data-table-action-bar.tsx`
+  #     Shows when `table.getFilteredSelectedRowModel().rows.length > 0`.
+  #
+  # - Export patterns:
+  #   Read data from the table models depending on mode:
+  #   - Current Page: `table.getPaginationRowModel().rows`
+  #   - Selected Rows: `table.getFilteredSelectedRowModel().rows`
+  #   - All Rows: `table.getPrePaginationRowModel().rows` (or server fetch)
+  #   App utility example for Excel export:
+  #   - `lib/_utils/files/loopDownload/leadExports` (used in `components/tables/lead-list-tables/columns.tsx`)
+  #   Ensure export respects column visibility and order by using `table.getVisibleLeafColumns()`
+  #   to build headers and iterate visible cells per row in order.
+  #
+  # - Drop-in Export button (CSV + ZIP of CSVs):
+  #   Component: `external/shadcn-table/src/components/data-table/data-table-export-button.tsx`
+  #   Helpers:   `external/shadcn-table/src/lib/export.ts`
+  #   Usage inside toolbar:
+  #     <DataTableToolbar table={table}>
+  #       <DataTableExportButton table={table} filename="lead-list" />
+  #     </DataTableToolbar>
+  #   Modes supported:
+  #     - CSV (Current Page, Selected Rows, All Rows)
+  #     - ZIP of CSVs (All Rows, chunked)
+  #   Note: ZIP export requires `jszip` dependency in the host app.
