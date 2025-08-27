@@ -1,7 +1,7 @@
 "use client";
 
 import type { Table } from "@tanstack/react-table";
-import { Download, FileArchive, FileDown, Rows3 } from "lucide-react";
+import { Download, FileArchive, FileDown, Rows } from "lucide-react";
 import * as React from "react";
 
 import { exportTableToCSV, exportTableToZipCSV } from "../../lib/export";
@@ -66,7 +66,7 @@ export function DataTableExportButton<TData>({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className={className} {...props}>
+        <Button variant="outline" size="sm" className={className} {...props}>
           <Download />
           Export
         </Button>
@@ -74,7 +74,7 @@ export function DataTableExportButton<TData>({
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>Export</DropdownMenuLabel>
         <DropdownMenuItem onClick={onExportCsvPage}>
-          <Rows3 />
+          <Rows />
           CSV (Current Page)
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onExportCsvSelected} disabled={table.getFilteredSelectedRowModel().rows.length === 0}>
