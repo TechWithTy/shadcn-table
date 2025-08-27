@@ -4,9 +4,9 @@ import {
   ArrowRightIcon,
   ArrowUpIcon,
   CheckCircle2,
-  CircleHelp,
+  HelpCircle,
   CircleIcon,
-  CircleX,
+  Circle,
   Timer,
 } from "lucide-react";
 import { customAlphabet } from "nanoid";
@@ -33,10 +33,10 @@ export function generateRandomTask(): Task {
 
 export function getStatusIcon(status: Task["status"]) {
   const statusIcons = {
-    canceled: CircleX,
+    canceled: Circle,
     done: CheckCircle2,
     "in-progress": Timer,
-    todo: CircleHelp,
+    todo: HelpCircle,
   };
 
   return statusIcons[status] || CircleIcon;

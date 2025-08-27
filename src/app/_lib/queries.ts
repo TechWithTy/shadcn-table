@@ -14,6 +14,8 @@ import {
 } from "drizzle-orm";
 import { db } from "../../db";
 import { tasks } from "../../db/schema";
+import type { Task } from "../../db/schema";
+import type { ExtendedColumnSort } from "../../types/data-table";
 
 import { filterColumns } from "../../lib/filter-columns";
 import { unstable_cache } from "../../lib/unstable-cache";
@@ -81,11 +83,28 @@ export async function getTasks(input: GetTasksSchema) {
                 : undefined,
             );
 
+        // Map of sortable columns to avoid dynamic indexing on the Drizzle table
+        const taskColumnMap = {
+          id: tasks.id,
+          code: tasks.code,
+          title: tasks.title,
+          status: tasks.status,
+          label: tasks.label,
+          priority: tasks.priority,
+          estimatedHours: tasks.estimatedHours,
+          archived: tasks.archived,
+          createdAt: tasks.createdAt,
+          updatedAt: tasks.updatedAt,
+        } as const;
+
+        type TaskColumnKey = keyof typeof taskColumnMap;
+
         const orderBy =
           input.sort.length > 0
-            ? input.sort.map((item) =>
-                item.desc ? desc(tasks[item.id]) : asc(tasks[item.id]),
-              )
+            ? input.sort.map(({ id, desc: isDesc }: ExtendedColumnSort<Task>) => {
+                const column = taskColumnMap[id as TaskColumnKey];
+                return isDesc ? desc(column) : asc(column);
+              })
             : [asc(tasks.createdAt)];
 
         const { data, total } = await db.transaction(async (tx) => {
