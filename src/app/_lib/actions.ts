@@ -3,11 +3,11 @@
 import { asc, eq, inArray, not } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import { revalidateTag, unstable_noStore } from "next/cache";
-import { db } from "@/db/index";
-import { type Task, tasks } from "@/db/schema";
-import { takeFirstOrThrow } from "@/db/utils";
+import { db } from "../../db/index";
+import { type Task, tasks } from "../../db/schema";
+import { takeFirstOrThrow } from "../../db/utils";
 
-import { getErrorMessage } from "@/lib/handle-error";
+import { getErrorMessage } from "../../lib/handle-error";
 
 import { generateRandomTask } from "./utils";
 import type { CreateTaskSchema, UpdateTaskSchema } from "./validations";

@@ -17,8 +17,8 @@ import {
   type SQL,
   type Table,
 } from "drizzle-orm";
-import { isEmpty } from "@/db/utils";
-import type { ExtendedColumnFilter, JoinOperator } from "@/types/data-table";
+import { isEmpty } from "../db/utils";
+import type { ExtendedColumnFilter, JoinOperator } from "../types/data-table";
 
 export function filterColumns<T extends Table>({
   table,

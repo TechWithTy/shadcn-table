@@ -1,5 +1,5 @@
-import { db } from "@/db/index";
-import { type Task, tasks } from "@/db/schema";
+import { db } from "../../db/index";
+import { type Task, tasks } from "../../db/schema";
 
 import { generateRandomTask } from "./utils";
 

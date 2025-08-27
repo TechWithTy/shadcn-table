@@ -12,11 +12,11 @@ import {
   lte,
   sql,
 } from "drizzle-orm";
-import { db } from "@/db";
-import { tasks } from "@/db/schema";
+import { db } from "../../db";
+import { tasks } from "../../db/schema";
 
-import { filterColumns } from "@/lib/filter-columns";
-import { unstable_cache } from "@/lib/unstable-cache";
+import { filterColumns } from "../../lib/filter-columns";
+import { unstable_cache } from "../../lib/unstable-cache";
 
 import type { GetTasksSchema } from "./validations";
 

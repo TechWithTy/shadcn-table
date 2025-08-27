@@ -6,9 +6,9 @@ import {
   parseAsStringEnum,
 } from "nuqs/server";
 import * as z from "zod";
-import { flagConfig } from "@/config/flag";
-import { type Task, tasks } from "@/db/schema";
-import { getFiltersStateParser, getSortingStateParser } from "@/lib/parsers";
+import { flagConfig } from "../../config/flag";
+import { type Task, tasks } from "../../db/schema";
+import { getFiltersStateParser, getSortingStateParser } from "../../lib/parsers";
 
 export const searchParamsCache = createSearchParamsCache({
   filterFlag: parseAsStringEnum(

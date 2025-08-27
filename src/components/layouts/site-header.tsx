@@ -1,10 +1,10 @@
 import { LayoutGrid } from "lucide-react";
 import Link from "next/link";
 
-import { Icons } from "@/components/icons";
-import { ModeToggle } from "@/components/layouts/mode-toggle";
-import { Button } from "@/components/ui/button";
-import { siteConfig } from "@/config/site";
+import { Icons } from "../icons";
+import { ModeToggle } from "./mode-toggle";
+import { Button } from "../ui/button";
+import { siteConfig } from "../../config/site";
 
 export function SiteHeader() {
   return (

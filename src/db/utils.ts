@@ -5,7 +5,7 @@
 import { type AnyColumn, sql } from "drizzle-orm";
 import { pgTableCreator } from "drizzle-orm/pg-core";
 
-import { databasePrefix } from "@/lib/constants";
+import { databasePrefix } from "../lib/constants";
 
 /**
  * Allows a single database instance for multiple projects.

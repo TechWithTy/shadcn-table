@@ -10,9 +10,9 @@ import {
   Timer,
 } from "lucide-react";
 import { customAlphabet } from "nanoid";
-import { type Task, tasks } from "@/db/schema";
+import { type Task, tasks } from "../../db/schema";
 
-import { generateId } from "@/lib/id";
+import { generateId } from "../../lib/id";
 
 export function generateRandomTask(): Task {
   return {

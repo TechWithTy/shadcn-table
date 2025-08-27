@@ -1,15 +1,15 @@
-import { SiteHeader } from "@/components/layouts/site-header";
-import { ThemeProvider } from "@/components/providers";
-import { TailwindIndicator } from "@/components/tailwind-indicator";
-import { siteConfig } from "@/config/site";
-import { cn } from "@/lib/utils";
+import { SiteHeader } from "../components/layouts/site-header";
+import { ThemeProvider } from "../components/providers";
+import { TailwindIndicator } from "../components/tailwind-indicator";
+import { siteConfig } from "../config/site";
+import { cn } from "../lib/utils";
 
-import "@/styles/globals.css";
+import "../styles/globals.css";
 
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Toaster } from "@/components/ui/sonner";
-import { fontMono, fontSans } from "@/lib/fonts";
+import { Toaster } from "../components/ui/sonner";
+import { fontMono, fontSans } from "../lib/fonts";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),

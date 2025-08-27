@@ -11,10 +11,10 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { DataTableColumnHeader } from "../../components/data-table/data-table-column-header";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Checkbox } from "../../components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,11 +27,11 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { type Task, tasks } from "@/db/schema";
-import { formatDate } from "@/lib/format";
-import { getErrorMessage } from "@/lib/handle-error";
-import type { DataTableRowAction } from "@/types/data-table";
+} from "../../components/ui/dropdown-menu";
+import { type Task, tasks } from "../../db/schema";
+import { formatDate } from "../../lib/format";
+import { getErrorMessage } from "../../lib/handle-error";
+import type { DataTableRowAction } from "../../types/data-table";
 
 import { updateTask } from "../_lib/actions";
 import { getPriorityIcon, getStatusIcon } from "../_lib/utils";

@@ -11,8 +11,8 @@ import {
   DayPicker,
   getDefaultClassNames,
 } from "react-day-picker";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button, buttonVariants } from "./button";
+import { cn } from "../../lib/utils";
 
 function Calendar({
   className,
@@ -26,7 +26,10 @@ function Calendar({
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"];
 }) {
-  const defaultClassNames = getDefaultClassNames();
+  const defaultClassNames =
+    typeof getDefaultClassNames === "function"
+      ? getDefaultClassNames()
+      : ({} as any);
 
   return (
     <DayPicker
@@ -178,7 +181,10 @@ function CalendarDayButton({
   modifiers,
   ...props
 }: React.ComponentProps<typeof DayButton>) {
-  const defaultClassNames = getDefaultClassNames();
+  const defaultClassNames =
+    typeof getDefaultClassNames === "function"
+      ? getDefaultClassNames()
+      : ({} as any);
 
   const ref = React.useRef<HTMLButtonElement>(null);
   React.useEffect(() => {

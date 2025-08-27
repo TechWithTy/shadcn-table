@@ -6,7 +6,7 @@
 
 import { motion, type TargetAndTransition } from "motion/react";
 import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 
 interface Dimensions extends TargetAndTransition {
   width: string | number;
