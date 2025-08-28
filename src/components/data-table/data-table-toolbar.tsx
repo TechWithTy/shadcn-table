@@ -1,7 +1,7 @@
 "use client";
 
 import type { Column, Table } from "@tanstack/react-table";
-import { X } from "lucide-react";
+import { SlidersHorizontal, X } from "lucide-react";
 import * as React from "react";
 
 import { DataTableDateFilter } from "./data-table-date-filter";
@@ -11,6 +11,7 @@ import { DataTableViewOptions } from "./data-table-view-options";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { cn } from "../../lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 interface DataTableToolbarProps<TData> extends React.ComponentProps<"div"> {
   table: Table<TData>;
@@ -43,30 +44,48 @@ export function DataTableToolbar<TData>({
       )}
       {...props}
     >
-      <div className="flex flex-1 flex-wrap items-center gap-2">
-        {columns.map((column) => (
-          <DataTableToolbarFilter key={column.id} column={column} />
-        ))}
-        {isFiltered && (
-          <Button
-            aria-label="Reset filters"
-            variant="outline"
-            size="sm"
-            className="border-dashed"
-            onClick={onReset}
-          >
-            <X />
-            Reset
-          </Button>
-        )}
-      </div>
+      <div className="flex flex-1 flex-wrap items-center gap-2" />
       <div className="flex items-center gap-2">
         {children}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" size="sm">
+              <SlidersHorizontal className="mr-2 h-4 w-4" />
+              Filters
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-80 p-3">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium">Filters</h4>
+                {isFiltered && (
+                  <Button
+                    type="button"
+                    aria-label="Reset filters"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={onReset}
+                  >
+                    <X className="mr-1 h-3 w-3" />
+                    Reset
+                  </Button>
+                )}
+              </div>
+              <div className="grid gap-3">
+                {columns.map((column) => (
+                  <DataTableToolbarFilter key={column.id} column={column} />
+                ))}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
         <DataTableViewOptions table={table} />
       </div>
     </div>
   );
 }
+
 interface DataTableToolbarFilterProps<TData> {
   column: Column<TData>;
 }

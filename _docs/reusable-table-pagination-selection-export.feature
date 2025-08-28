@@ -120,4 +120,16 @@ Feature: Reusable DataTable - Pagination, Selection, and Export
   #   Modes supported:
   #     - CSV (Current Page, Selected Rows, All Rows)
   #     - ZIP of CSVs (All Rows, chunked)
-  #   Note: ZIP export requires `jszip` dependency in the host app.
+  #     - Excel (.xlsx) for a single table
+  #     - ZIP of Excels for multiple lists (e.g., per status)
+  #   Note: Excel export requires `exceljs` and ZIP features require `jszip` in the host app.
+  #
+  # - Excel helpers (dynamic import):
+  #   - `exportTableToExcel(table, { filename, mode, excludeColumns, sheetName })`
+  #   - `exportTablesToZipExcel([{ table, filename, ... }], zipName)`
+  #   Example of wiring ZIP of Excels via the button:
+  #     const excelZipItems = [
+  #       { table, filename: "leads-new",    mode: "all", sheetName: "new" },
+  #       { table, filename: "leads-contacted", mode: "all", sheetName: "contacted" },
+  #     ];
+  #     <DataTableExportButton table={table} filename="leads" excelZipItems={excelZipItems} />

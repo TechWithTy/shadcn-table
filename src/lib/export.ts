@@ -125,3 +125,92 @@ export async function exportTableToZipCSV<TData>(
   const blob = new Blob([content], { type: "application/zip" });
   downloadBlob(blob, `${filename}.zip`);
 }
+
+// Export visible columns to a single Excel (.xlsx) workbook with one worksheet.
+export async function exportTableToExcel<TData>(
+  table: Table<TData>,
+  opts: {
+    filename?: string;
+    excludeColumns?: (keyof TData | "select" | "actions")[];
+    mode?: ExportMode;
+    sheetName?: string;
+  } = {},
+): Promise<void> {
+  const {
+    filename = "table",
+    excludeColumns = [],
+    mode = "page",
+    sheetName = "Sheet1",
+  } = opts;
+
+  let ExcelJS: any;
+  try {
+    ExcelJS = (await import("exceljs")).Workbook;
+  } catch (err) {
+    console.error(
+      "exportTableToExcel requires 'exceljs' to be installed. Please add it to your dependencies.",
+      err,
+    );
+    throw err;
+  }
+
+  const headers = getVisibleHeaderIds(table, excludeColumns);
+  const rows = getRowsByMode(table, mode);
+
+  const wb = new ExcelJS();
+  const ws = wb.addWorksheet(sheetName);
+  ws.addRow(headers);
+  for (const row of rows as any) {
+    ws.addRow(headers.map((h) => row.getValue(h)));
+  }
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  downloadBlob(blob, `${filename}.xlsx`);
+}
+
+// Export multiple tables as a ZIP of Excel files. Each table becomes a separate .xlsx.
+export async function exportTablesToZipExcel<TData>(
+  items: Array<{
+    table: Table<TData>;
+    filename: string; // without extension, per workbook inside zip
+    excludeColumns?: (keyof TData | "select" | "actions")[];
+    mode?: ExportMode;
+    sheetName?: string;
+  }>,
+  zipName = "tables_export",
+): Promise<void> {
+  let ExcelJS: any;
+  let JSZip: any;
+  try {
+    ExcelJS = (await import("exceljs")).Workbook;
+    JSZip = (await import("jszip")).default;
+  } catch (err) {
+    console.error(
+      "exportTablesToZipExcel requires both 'exceljs' and 'jszip' to be installed.",
+      err,
+    );
+    throw err;
+  }
+
+  const zip = new JSZip();
+
+  for (const item of items) {
+    const headers = getVisibleHeaderIds(item.table, item.excludeColumns ?? []);
+    const rows = getRowsByMode(item.table, item.mode ?? "all");
+
+    const wb = new ExcelJS();
+    const ws = wb.addWorksheet(item.sheetName ?? "Sheet1");
+    ws.addRow(headers);
+    for (const row of rows as any) {
+      ws.addRow(headers.map((h) => row.getValue(h)));
+    }
+    const buf: ArrayBuffer = await wb.xlsx.writeBuffer();
+    zip.file(`${item.filename}.xlsx`, buf);
+  }
+
+  const content: Uint8Array = await zip.generateAsync({ type: "uint8array" });
+  const blob = new Blob([content], { type: "application/zip" });
+  downloadBlob(blob, `${zipName}.zip`);
+}

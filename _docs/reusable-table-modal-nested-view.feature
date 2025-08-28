@@ -128,3 +128,25 @@ Feature: Reusable DataTable - Modal Nested List View
   #   Headers/cells are rendered by `external/shadcn-table/src/components/data-table/data-table.tsx`
   #   using TanStack `flexRender`. Your modal trigger lives in a column's `cell` so it renders
   #   inline with the row.
+  #
+  # - Reusable row-to-row modal carousel:
+  #   Hook: `external/shadcn-table/src/hooks/use-row-carousel.ts`
+  #   UI:   `external/shadcn-table/src/components/data-table/data-table-row-modal-carousel.tsx`
+  #   Usage pattern:
+  #     const carousel = useRowCarousel(table, { loop: true })
+  #     <DataTable table={table} onRowClick={(row) => carousel.openAt(row)}>
+  #       ...
+  #     </DataTable>
+  #     <DataTableRowModalCarousel
+  #       table={table}
+  #       open={carousel.open}
+  #       onOpenChange={carousel.setOpen}
+  #       index={carousel.index}
+  #       setIndex={carousel.setIndex}
+  #       rows={carousel.rows}
+  #       onPrev={carousel.prev}
+  #       onNext={carousel.next}
+  #       title={(row) => row.original.name}
+  #       description={(row) => row.original.email}
+  #       render={(row) => <YourRowDetails row={row} />}
+  #     />
