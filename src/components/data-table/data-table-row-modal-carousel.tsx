@@ -26,10 +26,11 @@ export interface DataTableRowModalCarouselProps<TData> {
   description?: (row: Row<TData>, index: number) => React.ReactNode;
   render: (row: Row<TData>, index: number) => React.ReactNode;
   actions?: (row: Row<TData>, index: number) => React.ReactNode;
+  counter?: (row: Row<TData>, index: number) => React.ReactNode;
 }
 
 export function DataTableRowModalCarousel<TData>(props: DataTableRowModalCarouselProps<TData>) {
-  const { open, onOpenChange, rows, index, onPrev, onNext, title, description, render, actions } = props;
+  const { open, onOpenChange, rows, index, onPrev, onNext, title, description, render, actions, counter } = props;
   const row = rows[index];
 
   React.useEffect(() => {
@@ -44,7 +45,7 @@ export function DataTableRowModalCarousel<TData>(props: DataTableRowModalCarouse
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl md:max-w-4xl">
+      <DialogContent className="sm:max-w-3xl md:max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {row && title ? title(row, index) : `Row ${index + 1} of ${rows.length}`}
@@ -53,7 +54,10 @@ export function DataTableRowModalCarousel<TData>(props: DataTableRowModalCarouse
             <DialogDescription>{description(row, index)}</DialogDescription>
           ) : null}
         </DialogHeader>
-        <div className="grid gap-3 text-sm leading-6">
+        <div
+          className="grid gap-3 text-sm leading-6 overflow-y-auto pr-1"
+          style={{ maxHeight: "calc(85vh - 150px)" }}
+        >
           {row ? (
             render(row, index)
           ) : (
@@ -79,7 +83,7 @@ export function DataTableRowModalCarousel<TData>(props: DataTableRowModalCarouse
               </div>
             ) : null}
             <div className="text-muted-foreground text-xs sm:text-sm">
-              {rows.length > 0 ? `${index + 1} / ${rows.length}` : "0 / 0"}
+              {row && counter ? counter(row, index) : rows.length > 0 ? `${index + 1} / ${rows.length}` : "0 / 0"}
             </div>
           </div>
           <Button
