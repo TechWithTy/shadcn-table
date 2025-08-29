@@ -7,7 +7,7 @@ import { Checkbox } from "../../../../components/ui/checkbox";
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import type { CallCampaign } from "../../../../../../../types/_dashboard/campaign";
-import { getTextMetric, getLastMessageAt, downloadCampaignZip } from "./helpers";
+import { getTextMetric, getLastMessageAt, downloadCampaignZip, getDeviceHint } from "./helpers";
 
 export function buildTextCampaignColumns(): ColumnDef<CallCampaign>[] {
   const cols: ColumnDef<CallCampaign>[] = [
@@ -58,6 +58,23 @@ export function buildTextCampaignColumns(): ColumnDef<CallCampaign>[] {
       enableColumnFilter: true,
       meta: { label: "Campaign Name", variant: "text", placeholder: "Search name" },
       size: 220,
+    },
+    {
+      id: "device",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Device" />
+      ),
+      meta: { label: "Device", variant: "text" },
+      cell: ({ row }) => {
+        const label = getDeviceHint(row.original as any);
+        const isApple = label === "Apple";
+        return (
+          <Badge variant={isApple ? "default" : "outline"} title={label}>
+            {label}
+          </Badge>
+        );
+      },
+      size: 96,
     },
     {
       accessorKey: "status",

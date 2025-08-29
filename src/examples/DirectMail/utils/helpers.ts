@@ -1,6 +1,6 @@
 import type { CallCampaign } from "../../../../../../types/_dashboard/campaign";
 
-export function filterCampaigns(data: CallCampaign[], query: string): CallCampaign[] {
+export function filterCampaigns<T extends CallCampaign>(data: T[], query: string): T[] {
   const q = query.trim().toLowerCase();
   if (!q) return data;
   return data.filter((r) =>

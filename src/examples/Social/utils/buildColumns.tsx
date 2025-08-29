@@ -43,6 +43,51 @@ export function buildSocialColumns(): ColumnDef<CallCampaign>[] {
       enableHiding: false,
       size: 48,
     },
+    // Subscribers — facebook only
+    {
+      id: "subscribers",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Subscribers" />
+      ),
+      meta: { label: "Subscribers", variant: "text" },
+      cell: ({ row }) => {
+        const o: any = row.original;
+        if (o.platform !== "facebook") return <span>-</span>;
+        const subs: Array<{
+          id: string;
+          name: string;
+          email?: string;
+          phone?: string;
+          tags?: Array<{ id: number; name: string }>;
+          lastSeen?: string;
+          lastInteraction?: string;
+        }> = o.subscribers || [];
+        const count = subs.length;
+        return (
+          <div className="flex items-center gap-1 flex-wrap max-w-[260px]">
+            <Badge variant="secondary">{count}</Badge>
+            {subs.slice(0, 3).map((s) => {
+              const parts: string[] = [
+                `ID: ${s.id}`,
+                s.email ? `Email: ${s.email}` : undefined,
+                s.phone ? `Phone: ${s.phone}` : undefined,
+                Array.isArray(s.tags) && s.tags.length ? `Tags: ${s.tags.map((t) => t.name).join(', ')}` : undefined,
+                s.lastSeen ? `Last seen: ${s.lastSeen}` : undefined,
+                s.lastInteraction ? `Last interaction: ${s.lastInteraction}` : undefined,
+              ].filter(Boolean) as string[];
+              const title = parts.join('\n');
+              return (
+                <Badge key={s.id} variant="outline" title={title || s.id}>
+                  {s.name}
+                </Badge>
+              );
+            })}
+            {count > 3 ? <span className="text-xs text-muted-foreground">+{count - 3} more</span> : null}
+          </div>
+        );
+      },
+      size: 260,
+    },
     // Platform badge (facebook/linkedin)
     {
       accessorKey: "platform",
@@ -127,6 +172,101 @@ export function buildSocialColumns(): ColumnDef<CallCampaign>[] {
         }
         const text = val ? String(val) : "-";
         return <span className="max-w-[260px] truncate" title={text}>{text}</span>;
+      },
+      size: 280,
+    },
+    // LinkedIn Summary (messages, attachments by type, reactions) — linkedin only
+    {
+      id: "liSummary",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="LinkedIn" />
+      ),
+      meta: { label: "LinkedIn", variant: "text" },
+      cell: ({ row }) => {
+        const o: any = row.original;
+        if (o.platform !== "linkedin") return <span>-</span>;
+        const items: any[] = Array.isArray(o.interactionsDetails) ? o.interactionsDetails : [];
+        const li = items.filter((it) => it && it.linkedinMessage);
+        const msgCount = li.length;
+        const attCounts = li.reduce((acc: Record<string, number>, it: any) => {
+          const atts: any[] = (it.linkedinMessage?.attachments as any[]) || [];
+          atts.forEach((a: any) => {
+            const t = String(a?.type || "unknown");
+            acc[t] = (acc[t] || 0) + 1;
+          });
+          return acc;
+        }, {} as Record<string, number>);
+        const totalReactions = li.reduce((sum: number, it: any) => sum + (((it.linkedinMessage?.reactions as any[]) || []).length), 0);
+        const attTitle = Object.entries(attCounts)
+          .map(([t, n]) => `${t}: ${n}`)
+          .join("\n");
+        return (
+          <div className="flex items-center gap-1 flex-wrap max-w-[280px]">
+            <Badge variant="secondary" title="LinkedIn messages with payload">Msgs: {msgCount}</Badge>
+            {Object.keys(attCounts).length > 0 ? (
+              <Badge variant="outline" title={attTitle || "Attachments"}>
+                Att: {Object.values(attCounts).reduce((a, b) => a + b, 0)}
+              </Badge>
+            ) : (
+              <Badge variant="outline">Att: 0</Badge>
+            )}
+            {totalReactions > 0 ? (
+              <Badge variant="outline" title="Total reactions across messages">Reacts: {totalReactions}</Badge>
+            ) : null}
+          </div>
+        );
+      },
+      size: 300,
+    },
+    // Growth Tools (ManyChat) — facebook only
+    {
+      id: "growthTools",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Growth Tools" />
+      ),
+      meta: { label: "Growth Tools", variant: "text" },
+      cell: ({ row }) => {
+        const o: any = row.original;
+        if (o.platform !== "facebook") return <span>-</span>;
+        const tools: Array<{ id: number; name: string; type: string }> = o.manychatGrowthTools || [];
+        const count = tools.length;
+        return (
+          <div className="flex items-center gap-1 flex-wrap max-w-[260px]">
+            <Badge variant="secondary">{count}</Badge>
+            {tools.slice(0, 3).map((t) => (
+              <Badge key={t.id} variant="outline" title={`${t.name} (${t.type})`}>
+                {t.name}
+              </Badge>
+            ))}
+            {count > 3 ? <span className="text-xs text-muted-foreground">+{count - 3} more</span> : null}
+          </div>
+        );
+      },
+      size: 280,
+    },
+    // Workflows (ManyChat Flows) — facebook only
+    {
+      id: "workflows",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Workflows" />
+      ),
+      meta: { label: "Workflows", variant: "text" },
+      cell: ({ row }) => {
+        const o: any = row.original;
+        if (o.platform !== "facebook") return <span>-</span>;
+        const flows: Array<{ ns: string; name: string; folder_id?: number }> = o.manychatFlows || [];
+        const count = flows.length;
+        return (
+          <div className="flex items-center gap-1 flex-wrap max-w-[260px]">
+            <Badge variant="secondary">{count}</Badge>
+            {flows.slice(0, 3).map((f) => (
+              <Badge key={f.ns} variant="outline" title={f.ns}>
+                {f.name}
+              </Badge>
+            ))}
+            {count > 3 ? <span className="text-xs text-muted-foreground">+{count - 3} more</span> : null}
+          </div>
+        );
       },
       size: 280,
     },

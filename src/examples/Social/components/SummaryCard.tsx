@@ -14,6 +14,22 @@ interface SummaryCardProps {
 }
 
 export const SummaryCard: React.FC<SummaryCardProps> = ({ filtered, campaignType, dateChip, setDateChip }) => {
+  // Build a flat interactions timeline from available rows
+  const timeline = React.useMemo(() => {
+    const items: Array<{ id: string; createdAt: string; label: string }> = [];
+    for (const r of filtered as Array<CallCampaign & { interactionsDetails?: any[] }>) {
+      const arr = (r as any)?.interactionsDetails as any[] | undefined;
+      if (!arr || arr.length === 0) continue;
+      for (const it of arr) {
+        if (!it?.createdAt) continue;
+        const label = `${it.type ?? "interaction"} by @${it.user ?? "user"}`;
+        items.push({ id: String(it.id ?? `${r.name}-${it.createdAt}`), createdAt: String(it.createdAt), label });
+      }
+    }
+    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return items.slice(0, 100);
+  }, [filtered]);
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -54,6 +70,27 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ filtered, campaignType
         <div className="mt-3 flex flex-wrap gap-1">
           <Badge variant="secondary">{campaignType}</Badge>
           <Badge variant="outline">Range: {dateChip}</Badge>
+        </div>
+        {/* Horizontal scrollable timeline */}
+        <div className="mt-4">
+          <div className="text-xs text-muted-foreground mb-2">Interactions Timeline</div>
+          <div className="overflow-x-auto">
+            <div className="flex items-center gap-2 whitespace-nowrap pr-2">
+              {timeline.length === 0 ? (
+                <div className="text-xs text-muted-foreground">No interactions available</div>
+              ) : (
+                timeline.map((t) => (
+                  <div key={t.id} className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {new Date(t.createdAt).toLocaleString()}
+                    </Badge>
+                    <span className="text-xs">{t.label}</span>
+                    <div className="h-[1px] w-8 bg-border" />
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>

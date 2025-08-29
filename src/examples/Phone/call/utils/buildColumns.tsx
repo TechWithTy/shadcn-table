@@ -467,6 +467,182 @@ export function buildCallCampaignColumns(
 
   // Add playback only for Calls
   if (campaignType === "Calls") {
+    // Helper: pull first Vapi call response safely
+    const firstCall = (row: CallCampaign) =>
+      ((row as unknown as { callInformation?: Array<{ callResponse?: any }> })
+        .callInformation?.[0]?.callResponse) as
+        | {
+            phoneCallTransport?: string;
+            phoneCallProvider?: string;
+            status?: string;
+            cost?: number;
+            costBreakdown?: { total?: number };
+            startedAt?: string | number | Date;
+            endedAt?: string | number | Date;
+          }
+        | undefined;
+
+    // Insert Vapi-specific columns before Playback
+    defaultCols.push(
+      {
+        id: "transport",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Transport" />
+        ),
+        accessorFn: (row) => firstCall(row)?.phoneCallTransport ?? "-",
+        cell: ({ row }) => {
+          const t = firstCall(row.original)?.phoneCallTransport ?? "-";
+          return <Badge variant="outline">{t}</Badge>;
+        },
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const v = String(row.getValue(id) ?? "");
+          return Array.isArray(value) ? value.includes(v) : String(value) === v;
+        },
+        meta: {
+          label: "Transport",
+          variant: "multiSelect",
+          options: [
+            { label: "SIP", value: "sip" },
+            { label: "PSTN", value: "pstn" },
+          ],
+        },
+        size: 90,
+      },
+      {
+        id: "provider",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Provider" />
+        ),
+        accessorFn: (row) => (firstCall(row)?.phoneCallProvider ?? "").toString(),
+        cell: ({ getValue }) => {
+          const p = String(getValue() || "-");
+          return <Badge>{p || "-"}</Badge>;
+        },
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const v = String(row.getValue(id) ?? "");
+          return Array.isArray(value) ? value.includes(v) : String(value) === v;
+        },
+        meta: {
+          label: "Provider",
+          variant: "multiSelect",
+          options: [
+            { label: "Twilio", value: "twilio" },
+            { label: "Vonage", value: "vonage" },
+            { label: "Vapi", value: "vapi" },
+          ],
+        },
+        size: 96,
+      },
+      {
+        id: "callStatus",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Call Status" />
+        ),
+        accessorFn: (row) => firstCall(row)?.status ?? "-",
+        cell: ({ getValue }) => (
+          <span className="block truncate max-w-[120px]" title={String(getValue())}>
+            {String(getValue())}
+          </span>
+        ),
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const v = String(row.getValue(id) ?? "");
+          return Array.isArray(value) ? value.includes(v) : String(value) === v;
+        },
+        meta: {
+          label: "Call Status",
+          variant: "multiSelect",
+          options: [
+            { label: "Queued", value: "queued" },
+            { label: "Ringing", value: "ringing" },
+            { label: "In Progress", value: "in-progress" },
+            { label: "Forwarding", value: "forwarding" },
+            { label: "Ended", value: "ended" },
+            { label: "Scheduled", value: "scheduled" },
+          ],
+        },
+        size: 120,
+      },
+      {
+        id: "costTotal",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Cost ($)" />
+        ),
+        accessorFn: (row) => firstCall(row)?.costBreakdown?.total ?? firstCall(row)?.cost ?? 0,
+        cell: ({ getValue }) => (
+          <span className="tabular-nums">{Number(getValue() ?? 0).toFixed(2)}</span>
+        ),
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const n = Number(row.getValue(id) ?? 0);
+          if (!Array.isArray(value)) return true;
+          const [min, max] = value as (number | undefined)[];
+          if (min != null && n < min) return false;
+          if (max != null && n > max) return false;
+          return true;
+        },
+        meta: { label: "Cost", variant: "range" },
+        size: 90,
+      },
+      {
+        id: "startedAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Started" />
+        ),
+        accessorFn: (row) => {
+          const raw = firstCall(row)?.startedAt;
+          const t = new Date(String(raw)).getTime();
+          return isNaN(t) ? 0 : t;
+        },
+        cell: ({ getValue }) => {
+          const v = getValue();
+          const d = new Date(typeof v === "number" ? v : String(v));
+          return <span className="tabular-nums">{isNaN(d.getTime()) ? "-" : d.toLocaleString()}</span>;
+        },
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const raw = row.getValue(id);
+          const t = typeof raw === "number" ? raw : new Date(String(raw)).getTime();
+          if (!Array.isArray(value)) return true;
+          const [from, to] = value as (number | undefined)[];
+          if (from && t < from) return false;
+          if (to && t > to) return false;
+          return true;
+        },
+        meta: { label: "Started", variant: "dateRange" },
+        size: 160,
+      },
+      {
+        id: "endedAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Ended" />
+        ),
+        accessorFn: (row) => {
+          const raw = firstCall(row)?.endedAt;
+          const t = new Date(String(raw)).getTime();
+          return isNaN(t) ? 0 : t;
+        },
+        cell: ({ getValue }) => {
+          const v = getValue();
+          const d = new Date(typeof v === "number" ? v : String(v));
+          return <span className="tabular-nums">{isNaN(d.getTime()) ? "-" : d.toLocaleString()}</span>;
+        },
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const raw = row.getValue(id);
+          const t = typeof raw === "number" ? raw : new Date(String(raw)).getTime();
+          if (!Array.isArray(value)) return true;
+          const [from, to] = value as (number | undefined)[];
+          if (from && t < from) return false;
+          if (to && t > to) return false;
+          return true;
+        },
+        meta: { label: "Ended", variant: "dateRange" },
+        size: 160,
+      },
+    );
     defaultCols.push({
       id: "playback",
       header: ({ column }) => (

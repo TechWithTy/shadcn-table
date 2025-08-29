@@ -5,7 +5,6 @@ import { type ColumnDef } from "@tanstack/react-table";
 
 import { DataTable } from "../components/data-table/data-table";
 import { DataTableToolbar } from "../components/data-table/data-table-toolbar";
-import { DataTableRowModalCarousel } from "../components/data-table/data-table-row-modal-carousel";
 import { Input } from "../components/ui/input";
 import { useDataTable } from "../hooks/use-data-table";
 import { useRowCarousel } from "../hooks/use-row-carousel";
@@ -15,12 +14,10 @@ import { ActionBar } from "./Social/components/ActionBar";
 import { AIDialog } from "./Social/components/AIDialog";
 import { buildSocialColumns } from "./Social/utils/buildColumns";
 import { summarizeRows } from "./Social/utils/summarize";
+import { SocialRowCarousel } from "./Social/components/SocialRowCarousel";
+import { generateSocialCampaignData } from "./Social/utils/mock";
 
 import { type CallCampaign } from "../../../../types/_dashboard/campaign";
-import {
-  generateCallCampaignData,
-  mockCallCampaignData,
-} from "../../../../constants/_faker/calls/callCampaign";
 
 type ParentTab = "calls" | "text" | "social" | "directMail";
 
@@ -33,47 +30,11 @@ export default function SocialCampaignsDemoTable({
   const [query, setQuery] = React.useState("");
   const [aiOpen, setAiOpen] = React.useState(false);
   const [aiRows, setAiRows] = React.useState<CallCampaign[]>([]);
-  const [detailIndex, setDetailIndex] = React.useState(0);
   const campaignType = "Social" as const;
   const [dateChip, setDateChip] = React.useState<DateChip>("today");
 
   React.useEffect(() => {
-    const base = (mockCallCampaignData as CallCampaign[] | false) || generateCallCampaignData();
-    // Enrich with social-specific fields for demo (platform + identifiers)
-    const enriched = base.map((r) => {
-      const isFacebook = Math.random() < 0.5;
-      if (isFacebook) {
-        const fb = {
-          platform: "facebook",
-          manychatFlowId: Math.random() < 0.7 ? `flow_${Math.floor(Math.random() * 9000 + 1000)}` : undefined,
-          manychatFlowName: Math.random() < 0.9 ? `Welcome Flow ${Math.floor(Math.random() * 10 + 1)}` : undefined,
-          facebookSubscriberId: Math.random() < 0.8 ? `sub_${Math.floor(Math.random() * 1_000_000)}` : undefined,
-          facebookExternalId: Math.random() < 0.3 ? `${Math.floor(Math.random() * 1_000_000)}` : undefined,
-          lastSentAt: Math.random() < 0.6 ? new Date(Date.now() - Math.floor(Math.random() * 7) * 86400000).toISOString() : undefined,
-          queued: Math.floor(Math.random() * 5),
-          sent: Math.floor(Math.random() * 20),
-          delivered: Math.floor(Math.random() * 20),
-          failed: Math.floor(Math.random() * 3),
-        } as Record<string, unknown>;
-        return ({ ...r, ...fb }) as unknown as CallCampaign;
-      }
-      const liTypes = ["DM", "Invite", "InMail"] as const;
-      const li = {
-        platform: "linkedin",
-        liTemplateType: liTypes[Math.floor(Math.random() * liTypes.length)],
-        liTemplateName: `Template ${Math.floor(Math.random() * 5) + 1}`,
-        linkedinChatId: Math.random() < 0.6 ? `li_chat_${Math.floor(Math.random() * 1_000_000)}` : undefined,
-        linkedinProfileUrl: Math.random() < 0.4 ? `https://www.linkedin.com/in/user${Math.floor(Math.random() * 10000)}/` : undefined,
-        linkedinPublicId: Math.random() < 0.2 ? `user${Math.floor(Math.random() * 10000)}` : undefined,
-        lastSentAt: Math.random() < 0.6 ? new Date(Date.now() - Math.floor(Math.random() * 7) * 86400000).toISOString() : undefined,
-        queued: Math.floor(Math.random() * 5),
-        sent: Math.floor(Math.random() * 20),
-        delivered: Math.floor(Math.random() * 20),
-        failed: Math.floor(Math.random() * 3),
-      } as Record<string, unknown>;
-      return ({ ...r, ...li }) as unknown as CallCampaign;
-    });
-    setData(enriched);
+    setData(generateSocialCampaignData());
   }, []);
 
   const columns = React.useMemo<ColumnDef<CallCampaign>[]>(() => buildSocialColumns(), []);
@@ -103,6 +64,10 @@ export default function SocialCampaignsDemoTable({
         "name",
         "flowTemplate",
         "audience",
+        "liSummary",
+        "subscribers",
+        "growthTools",
+        "workflows",
         "progress",
         "calls",
         "inQueue",
@@ -122,10 +87,6 @@ export default function SocialCampaignsDemoTable({
   });
 
   const carousel = useRowCarousel(table, { loop: true });
-
-  React.useEffect(() => {
-    if (carousel.open) setDetailIndex(0);
-  }, [carousel.open, carousel.index]);
 
   function getSelectedRows(): CallCampaign[] {
     return table.getFilteredSelectedRowModel().rows.map((r) => r.original as CallCampaign);
@@ -159,7 +120,6 @@ export default function SocialCampaignsDemoTable({
         table={table}
         className="mt-2"
         onRowClick={(row) => {
-          setDetailIndex(0);
           carousel.openAt(row);
         }}
         actionBar={
@@ -192,19 +152,13 @@ export default function SocialCampaignsDemoTable({
 
       <AIDialog open={aiOpen} onOpenChange={setAiOpen} rows={aiRows} summarize={summarizeRows} />
 
-      <DataTableRowModalCarousel
+      <SocialRowCarousel
         table={table}
         open={carousel.open}
-        onOpenChange={carousel.setOpen}
+        setOpen={carousel.setOpen}
         index={carousel.index}
         setIndex={carousel.setIndex}
-        rows={carousel.rows}
-        onPrev={() => setDetailIndex((i) => Math.max(0, i - 1))}
-        onNext={() => setDetailIndex((i) => i + 1)}
-        title={(row) => row.original.name}
-        description={(row) => `Started: ${new Date(row.original.startDate).toLocaleDateString()}`}
-        counter={() => `-`}
-        render={() => <div className="text-muted-foreground">No playback for Social campaigns</div>}
+        rows={carousel.rows as any}
       />
     </main>
   );

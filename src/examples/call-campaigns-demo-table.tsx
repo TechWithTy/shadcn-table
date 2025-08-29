@@ -131,6 +131,14 @@ export default function CallCampaignsDemoTable({
       "status",
       "transfer",
       "transfers",
+      // Vapi call details
+      "transport",
+      "provider",
+      "callStatus",
+      "costTotal",
+      "startedAt",
+      "endedAt",
+      // existing date and playback columns
       "startDate",
       "playback",
     ];

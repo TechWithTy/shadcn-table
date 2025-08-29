@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { faker } from "@faker-js/faker";
 
 import { DataTable } from "../components/data-table/data-table";
 import { DataTableRowModalCarousel } from "../components/data-table/data-table-row-modal-carousel";
@@ -14,11 +15,13 @@ import {
   mockCallCampaignData,
 } from "../../../../constants/_faker/calls/callCampaign";
 import { buildTextCampaignColumns } from "./Phone/text/utils/buildColumns";
+import { TextRowCarousel } from "./Phone/text/components/TextRowCarousel";
 import { SummaryCard } from "./Phone/text/components/SummaryCard";
 import { AIDialog } from "./Phone/text/components/AIDialog";
 import { ActionBar } from "./Phone/text/components/ActionBar";
 import { TextTableToolbar } from "./Phone/text/components/TextTableToolbar";
 import { getSelectedRowsFromTable, getAllRowsFromTable, summarizeRows } from "./Phone/text/utils/helpers";
+import { generateSampleTextMessage } from "../../../../constants/_faker/texts/texts";
 
 type ParentTab = "calls" | "text" | "social" | "directMail";
 
@@ -38,7 +41,22 @@ export default function TextCampaignsDemoTable({
 
   React.useEffect(() => {
     const d = (mockCallCampaignData as CallCampaign[] | false) || generateCallCampaignData();
-    setData(d);
+    // Enrich each row with a few text messages for device chip inference
+    const withMessages = d.map((row) => {
+      const count = faker.number.int({ min: 1, max: 5 });
+      const msgs = Array.from({ length: count }, () => generateSampleTextMessage());
+      // Guarantee at least one message and bias to Apple/iMessage so the chip shows
+      if (msgs.length === 0) msgs.push(generateSampleTextMessage());
+      const biasApple = faker.number.int({ min: 1, max: 100 }) <= 60; // ~60%
+      if (biasApple) {
+        // force first msg to be Apple/iMessage
+        msgs[0].service = "iMessage";
+        msgs[0].appleDevice = true;
+        msgs[0].provider = msgs[0].provider ?? "sendblue";
+      }
+      return { ...row, messages: msgs };
+    });
+    setData(withMessages as unknown as CallCampaign[]);
   }, []);
 
   const columns = React.useMemo(() => buildTextCampaignColumns(), []);
@@ -65,6 +83,7 @@ export default function TextCampaignsDemoTable({
       columnOrder: [
         "select",
         "name",
+        "device",
         "status",
         "transfer",
         "transfers",
@@ -163,19 +182,13 @@ export default function TextCampaignsDemoTable({
         summarizeRows={summarizeRows}
       />
 
-      <DataTableRowModalCarousel
+      <TextRowCarousel
         table={table}
         open={carousel.open}
-        onOpenChange={carousel.setOpen}
+        setOpen={carousel.setOpen}
         index={carousel.index}
         setIndex={carousel.setIndex}
-        rows={carousel.rows}
-        onPrev={() => setDetailIndex((i) => Math.max(0, i - 1))}
-        onNext={() => setDetailIndex((i) => i + 1)}
-        title={(row) => row.original.name}
-        description={(row) => `Started: ${new Date(row.original.startDate).toLocaleDateString()}`}
-        counter={() => `-`}
-        render={() => <div className="text-muted-foreground">No playback for Text campaigns</div>}
+        rows={carousel.rows as any}
       />
     </main>
   );

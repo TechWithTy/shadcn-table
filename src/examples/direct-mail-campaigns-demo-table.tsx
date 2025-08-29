@@ -3,23 +3,20 @@
 import * as React from "react";
 import { DataTable } from "../components/data-table/data-table";
 import { DataTableToolbar } from "../components/data-table/data-table-toolbar";
-import { DataTableRowModalCarousel } from "../components/data-table/data-table-row-modal-carousel";
 import { DataTableExportButton } from "../components/data-table/data-table-export-button";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { useDataTable } from "../hooks/use-data-table";
 import { useRowCarousel } from "../hooks/use-row-carousel";
-import type { CallCampaign } from "../../../../types/_dashboard/campaign";
-import {
-  generateCallCampaignData,
-  mockCallCampaignData,
-} from "../../../../constants/_faker/calls/callCampaign";
 import { buildDirectMailColumns } from "./DirectMail/utils/columns";
 import { filterCampaigns, summarizeRows } from "./DirectMail/utils/helpers";
 import { SummaryPanel } from "./DirectMail/components/SummaryPanel";
 import { SelectionBar } from "./DirectMail/components/SelectionBar";
 import { AIMenu } from "./DirectMail/components/AIMenu";
 import { AIDialogPanel } from "./DirectMail/components/AIDialogPanel";
+import type { DirectMailCampaign } from "./DirectMail/utils/mock";
+import { generateDirectMailCampaignData } from "./DirectMail/utils/mock";
+import { DirectMailRowCarousel } from "./DirectMail/components/DirectMailRowCarousel";
 
 type ParentTab = "calls" | "text" | "social" | "directMail";
 
@@ -28,82 +25,95 @@ export default function DirectMailCampaignsDemoTable({
 }: {
   onNavigate?: (tab: ParentTab) => void;
 }) {
-  const [data, setData] = React.useState<CallCampaign[]>([]);
+  const [data, setData] = React.useState<DirectMailCampaign[]>([]);
   const [query, setQuery] = React.useState("");
   const [aiOpen, setAiOpen] = React.useState(false);
   const [aiOutput, setAiOutput] = React.useState<string>("");
-  const [aiRows, setAiRows] = React.useState<CallCampaign[]>([]);
-  const [detailIndex, setDetailIndex] = React.useState(0);
+  const [aiRows, setAiRows] = React.useState<DirectMailCampaign[]>([]);
   const campaignType = "Direct Mail" as const;
   const [dateChip, setDateChip] = React.useState<"today" | "7d" | "30d">("today");
 
   React.useEffect(() => {
-    const d = (mockCallCampaignData as CallCampaign[] | false) || generateCallCampaignData();
-    // Enrich with mock Lob template info for demo rendering
-    const templates = [
-      { id: "tmpl_postcard_std", name: "Postcard - Promo" },
-      { id: "tmpl_letter_bw", name: "Letter - BW" },
-      { id: "tmpl_selfmailer_color", name: "Self Mailer - Color" },
-    ];
-    const mailTypes = ["postcard", "letter", "self_mailer"] as const;
-    const mailSizes = ["4x6", "6x9", "8.5x11"] as const;
-    const now = Date.now();
-    const day = 24 * 60 * 60 * 1000;
-    const withLOB = d.map((r, i) => {
-      const delivered = Math.max(0, (r.calls ?? 0) - ((i * 3) % 15));
-      const returned = (i * 2) % 7;
-      const failed = i % 5;
-      const cost = Math.round(((r.calls ?? 0) * (0.45 + (i % 3) * 0.1)) * 100) / 100;
-      return {
-        ...r,
-        template: templates[i % templates.length],
-        mailType: mailTypes[i % mailTypes.length],
-        mailSize: mailSizes[i % mailSizes.length],
-        addressVerified: i % 4 !== 0,
-        expectedDeliveryAt: new Date(now + ((i % 14) + 1) * day).toISOString(),
-        lastEventAt: new Date(now - ((i % 21) + 1) * day).toISOString(),
-        deliveredCount: delivered,
-        returnedCount: returned,
-        failedCount: failed,
-        cost,
-      } as CallCampaign & any;
-    });
-    setData(withLOB as CallCampaign[]);
+    setData(generateDirectMailCampaignData());
   }, []);
   const columns = React.useMemo(() => buildDirectMailColumns(), []);
 
   const filtered = React.useMemo(() => filterCampaigns(data, query), [data, query]);
 
   const pageSize = 10;
-  const { table } = useDataTable<CallCampaign>({
+  const { table } = useDataTable<DirectMailCampaign>({
     data: filtered,
     columns,
     pageCount: Math.max(1, Math.ceil(filtered.length / pageSize)),
     initialState: {
       pagination: { pageIndex: 0, pageSize },
       columnPinning: { left: ["select"], right: [] },
-      columnOrder: [
-        "select",
-        "name",
-        "template",
-        "status",
-        "transfer",
-        "transfers",
-        "startDate",
-        "mailType",
-        "mailSize",
-        "addressVerified",
-        "expectedDeliveryAt",
-        "lastEventAt",
-        "deliveredCount",
-        "returnedCount",
-        "failedCount",
-        "cost",
-      ],
+      columnOrder: ["select", "name", "calls", "inQueue", "leads", "status", "transfer", "transfers", "startDate"],
       columnVisibility: {
         calls: false,
         inQueue: false,
         leads: false,
+        // LOB fields hidden by default
+        lob_id: false,
+        lob_url: false,
+        lob_carrier: false,
+        lob_front_template_id: false,
+        lob_back_template_id: false,
+        lob_date_created: false,
+        lob_date_modified: false,
+        lob_send_date: false,
+        lob_use_type: false,
+        lob_fsc: false,
+        lob_sla: false,
+        lob_object: false,
+        // LOB To address fields
+        lob_to_id: false,
+        lob_to_company: false,
+        lob_to_name: false,
+        lob_to_phone: false,
+        lob_to_email: false,
+        lob_to_address_line1: false,
+        lob_to_address_line2: false,
+        lob_to_address_city: false,
+        lob_to_address_state: false,
+        lob_to_address_zip: false,
+        lob_to_address_country: false,
+        lob_to_date_created: false,
+        lob_to_date_modified: false,
+        lob_to_object: false,
+        // LOB Letter-specific fields
+        lob_letter_template_id: false,
+        lob_letter_envelope_type: false,
+        lob_letter_page_count: false,
+        lob_letter_color: false,
+        lob_letter_double_sided: false,
+        lob_letter_address_placement: false,
+        lob_letter_return_envelope_included: false,
+        // LOB From-address fields
+        lob_from_id: false,
+        lob_from_name: false,
+        lob_from_company: false,
+        lob_from_phone: false,
+        lob_from_email: false,
+        lob_from_address_line1: false,
+        lob_from_address_line2: false,
+        lob_from_address_city: false,
+        lob_from_address_state: false,
+        lob_from_address_zip: false,
+        lob_from_address_country: false,
+        lob_from_date_created: false,
+        lob_from_date_modified: false,
+        lob_from_object: false,
+        // LOB Snap Pack-specific fields
+        lob_snap_outside_template_id: false,
+        lob_snap_inside_template_id: false,
+        lob_snap_inside_template_version_id: false,
+        lob_snap_outside_template_version_id: false,
+        lob_snap_size: false,
+        lob_snap_mail_type: false,
+        lob_snap_expected_delivery_date: false,
+        lob_snap_color: false,
+        lob_snap_thumbnail_large_1: false,
       },
     },
     enableColumnPinning: true,
@@ -111,16 +121,12 @@ export default function DirectMailCampaignsDemoTable({
 
   const carousel = useRowCarousel(table, { loop: true });
 
-  React.useEffect(() => {
-    if (carousel.open) setDetailIndex(0);
-  }, [carousel.open, carousel.index]);
-
-  function getSelectedRows(): CallCampaign[] {
-    return table.getFilteredSelectedRowModel().rows.map((r) => r.original as CallCampaign);
+  function getSelectedRows(): DirectMailCampaign[] {
+    return table.getFilteredSelectedRowModel().rows.map((r) => r.original as DirectMailCampaign);
   }
 
-  function getAllRows(): CallCampaign[] {
-    return table.getFilteredRowModel().rows.map((r) => r.original as CallCampaign);
+  function getAllRows(): DirectMailCampaign[] {
+    return table.getFilteredRowModel().rows.map((r) => r.original as DirectMailCampaign);
   }
 
   return (
@@ -148,16 +154,15 @@ export default function DirectMailCampaignsDemoTable({
         campaignType={campaignType}
         onOpenWithRows={(rows) => {
           if (!rows || rows.length === 0) return;
-          setAiRows(rows);
+          setAiRows(rows as DirectMailCampaign[]);
           setAiOpen(true);
         }}
       />
 
-      <DataTable<CallCampaign>
+      <DataTable<DirectMailCampaign>
         table={table}
         className="mt-2"
         onRowClick={(row) => {
-          setDetailIndex(0);
           carousel.openAt(row);
         }}
         actionBar={
@@ -216,20 +221,13 @@ export default function DirectMailCampaignsDemoTable({
         setAiOutput={setAiOutput}
         summarizeRows={summarizeRows}
       />
-
-      <DataTableRowModalCarousel
-        table={table}
+      <DirectMailRowCarousel
+        table={table as any}
         open={carousel.open}
-        onOpenChange={carousel.setOpen}
+        setOpen={carousel.setOpen}
         index={carousel.index}
         setIndex={carousel.setIndex}
-        rows={carousel.rows}
-        onPrev={() => setDetailIndex((i) => Math.max(0, i - 1))}
-        onNext={() => setDetailIndex((i) => i + 1)}
-        title={(row) => row.original.name}
-        description={(row) => `Started: ${new Date(row.original.startDate).toLocaleDateString()}`}
-        counter={() => `-`}
-        render={() => <div className="text-muted-foreground">No playback for Direct Mail campaigns</div>}
+        rows={carousel.rows as any}
       />
     </main>
   );

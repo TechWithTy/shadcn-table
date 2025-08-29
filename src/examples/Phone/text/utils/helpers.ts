@@ -1,9 +1,18 @@
 import type { Table } from "@tanstack/react-table";
 import type { CallCampaign } from "../../../../../../../types/_dashboard/campaign";
+import type { TextMessage } from "../../../../../../../types/goHighLevel/text";
 import JSZip from "jszip";
 
 export function getSelectedRowsFromTable(table: Table<CallCampaign>): CallCampaign[] {
   return table.getFilteredSelectedRowModel().rows.map((r) => r.original as CallCampaign);
+}
+
+// Infer device type (Apple vs Other) from optional messages on the row
+export function getDeviceHint(row: CallCampaign): string {
+  const msgs = (row as unknown as { messages?: TextMessage[] }).messages;
+  if (!Array.isArray(msgs) || msgs.length === 0) return "-";
+  const anyApple = msgs.some((m) => (m as any)?.appleDevice || (m as any)?.service === "iMessage");
+  return anyApple ? "Apple" : "Other";
 }
 
 export function getAllRowsFromTable(table: Table<CallCampaign>): CallCampaign[] {

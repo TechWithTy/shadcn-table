@@ -6,8 +6,8 @@ import { Button } from "../../../components/ui/button";
 import { AIMenu } from "./AIMenu";
 import { DataTableExportButton } from "../../../components/data-table/data-table-export-button";
 
-export function SelectionBar(props: {
-  table: Table<CallCampaign>;
+export function SelectionBar<T extends CallCampaign>(props: {
+  table: Table<T>;
   onUseSelected: () => void;
   onUseAll: () => void;
   filename: string;
