@@ -16,6 +16,7 @@ import { buildSocialColumns } from "./Social/utils/buildColumns";
 import { summarizeRows } from "./Social/utils/summarize";
 import { SocialRowCarousel } from "./Social/components/SocialRowCarousel";
 import { generateSocialCampaignData } from "./Social/utils/mock";
+import CampaignModalMain from "./campaigns/modal/CampaignModalMain";
 
 import { type CallCampaign } from "../../../../types/_dashboard/campaign";
 
@@ -30,6 +31,7 @@ export default function SocialCampaignsDemoTable({
   const [query, setQuery] = React.useState("");
   const [aiOpen, setAiOpen] = React.useState(false);
   const [aiRows, setAiRows] = React.useState<CallCampaign[]>([]);
+  const [createOpen, setCreateOpen] = React.useState(false);
   const campaignType = "Social" as const;
   const [dateChip, setDateChip] = React.useState<DateChip>("today");
 
@@ -104,14 +106,17 @@ export default function SocialCampaignsDemoTable({
             <h1 className="text-2xl font-semibold tracking-tight">Social Campaigns</h1>
             <p className="text-sm text-muted-foreground">Search, selection, filtering, and details.</p>
           </div>
-          {onNavigate && (
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("calls")}>Calls</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("text")}>Text</Button>
-              <Button type="button" variant="default" size="sm" onClick={() => onNavigate("social")}>Social</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("directMail")}>Direct Mail</Button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {onNavigate && (
+              <>
+                <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("calls")}>Calls</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("text")}>Text</Button>
+                <Button type="button" variant="default" size="sm" onClick={() => onNavigate("social")}>Social</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("directMail")}>Direct Mail</Button>
+              </>
+            )}
+            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>Create Campaign</Button>
+          </div>
         </div>
       </header>
       <SummaryCard filtered={filtered} campaignType={campaignType} dateChip={dateChip} setDateChip={setDateChip} />
@@ -160,6 +165,7 @@ export default function SocialCampaignsDemoTable({
         setIndex={carousel.setIndex}
         rows={carousel.rows as any}
       />
+      <CampaignModalMain open={createOpen} onOpenChange={setCreateOpen} defaultChannel="social" />
     </main>
   );
 }

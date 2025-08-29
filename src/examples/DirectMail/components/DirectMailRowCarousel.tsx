@@ -27,7 +27,6 @@ export function DirectMailRowCarousel({
   const rows = rowsProp ?? table.getRowModel().rows;
   const [detailIndex, setDetailIndex] = React.useState(0); // lead index
   const [mailingIndex, setMailingIndex] = React.useState(0); // mailing index within lead
-  const [expanded, setExpanded] = React.useState<Set<number>>(new Set());
 
   React.useEffect(() => {
     if (open) {
@@ -107,14 +106,6 @@ export function DirectMailRowCarousel({
           const dt = new Date(String(d));
           return isNaN(dt.getTime()) ? String(d) : dt.toLocaleString();
         };
-        const isExpanded = (idx: number) => expanded.has(idx);
-        const toggleExpanded = (idx: number) =>
-          setExpanded((prev) => {
-            const next = new Set(prev);
-            if (next.has(idx)) next.delete(idx);
-            else next.add(idx);
-            return next;
-          });
         return (
           <div className="grid gap-3 md:grid-cols-2">
             {lead ? (
@@ -215,89 +206,9 @@ export function DirectMailRowCarousel({
                             <Badge variant="secondary">Transfers: {m.transfers}</Badge>
                           ) : null}
                           <Badge variant="outline" className="capitalize">{String(m.status ?? "-").replace(/_/g, " ")}</Badge>
-                          {/* LOB summary chips (campaign-level) */}
-                          {r?.lob ? (
-                            <>
-                              <Badge variant="outline">{String(r.lob.object ?? "-")}</Badge>
-                              {r.lob.carrier ? <Badge variant="outline">{String(r.lob.carrier)}</Badge> : null}
-                              {r.lob.sla ? <Badge variant="outline">SLA: {String(r.lob.sla)}</Badge> : null}
-                            </>
-                          ) : null}
                         </div>
                         <div className="mt-2 text-xs text-muted-foreground">{m.pdfFilename}</div>
-                        {/* Expandable details */}
-                        <div className="mt-2">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleExpanded(idx);
-                            }}
-                          >
-                            {isExpanded(idx) ? "Hide details" : "Details"}
-                          </Button>
-                          {isExpanded(idx) && r?.lob ? (
-                            <div className="mt-2 rounded border bg-background p-2 text-xs">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <div>
-                                  <div className="text-muted-foreground">LOB URL</div>
-                                  <div className="truncate">{String(r.lob.url ?? "-")}</div>
-                                </div>
-                                <div>
-                                  <div className="text-muted-foreground">Send Date</div>
-                                  <div>{fmt(r.lob.send_date)}</div>
-                                </div>
-                                <div>
-                                  <div className="text-muted-foreground">To</div>
-                                  <div>{r.lob?.to?.name ?? r.lob?.to?.company ?? "-"}</div>
-                                </div>
-                                <div>
-                                  <div className="text-muted-foreground">From</div>
-                                  <div>{r.lob?.from?.name ?? r.lob?.from?.company ?? "-"}</div>
-                                </div>
-                              </div>
-                              {/* Type-specific quick peek */}
-                              {r.lob.object === "postcard" ? (
-                                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  <div>
-                                    <div className="text-muted-foreground">Front Tmpl</div>
-                                    <div>{String((r.lob as any).front_template_id ?? "-")}</div>
-                                  </div>
-                                  <div>
-                                    <div className="text-muted-foreground">Back Tmpl</div>
-                                    <div>{String((r.lob as any).back_template_id ?? "-")}</div>
-                                  </div>
-                                </div>
-                              ) : null}
-                              {r.lob.object === "letter" ? (
-                                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  <div>
-                                    <div className="text-muted-foreground">Template</div>
-                                    <div>{String((r.lob as any).template_id ?? "-")}</div>
-                                  </div>
-                                  <div>
-                                    <div className="text-muted-foreground">Envelope</div>
-                                    <div>{String((r.lob as any).envelope_type ?? "-")}</div>
-                                  </div>
-                                </div>
-                              ) : null}
-                              {r.lob.object === "snap_pack" ? (
-                                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  <div>
-                                    <div className="text-muted-foreground">Outside Tmpl</div>
-                                    <div>{String((r.lob as any).outside_template_id ?? "-")}</div>
-                                  </div>
-                                  <div>
-                                    <div className="text-muted-foreground">Inside Tmpl</div>
-                                    <div>{String((r.lob as any).inside_template_id ?? "-")}</div>
-                                  </div>
-                                </div>
-                              ) : null}
-                            </div>
-                          ) : null}
-                        </div>
+                        {/* LOB details removed by request */}
                       </div>
                     );
                   })
@@ -306,128 +217,7 @@ export function DirectMailRowCarousel({
                 )}
               </div>
             </div>
-            {/* LOB Details by Mail Type */}
-            {r?.lob ? (
-              <div className="rounded-md border p-3">
-                <div className="font-medium">LOB Details</div>
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <div className="text-xs text-muted-foreground">Object</div>
-                    <div className="font-medium">{String(r.lob.object ?? "-")}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Carrier</div>
-                    <div className="font-medium">{String(r.lob.carrier ?? "-")}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Send Date</div>
-                    <div className="font-medium">{fmt(r.lob.send_date)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">SLA</div>
-                    <div className="font-medium">{String(r.lob.sla ?? "-")}</div>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <div className="text-xs text-muted-foreground">URL</div>
-                    <div className="font-medium truncate">{String(r.lob.url ?? "-")}</div>
-                  </div>
-                </div>
-
-                {/* Addresses */}
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <div className="text-xs text-muted-foreground">To</div>
-                    <div className="font-medium">{r.lob?.to?.name ?? r.lob?.to?.company ?? "-"}</div>
-                    <div className="text-xs text-muted-foreground">{r.lob?.to?.address_line1 ?? ""}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">From</div>
-                    <div className="font-medium">{r.lob?.from?.name ?? r.lob?.from?.company ?? "-"}</div>
-                    <div className="text-xs text-muted-foreground">{r.lob?.from?.address_line1 ?? ""}</div>
-                  </div>
-                </div>
-
-                {/* Type specific */}
-                {r.lob.object === "postcard" ? (
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Front Template</div>
-                      <div className="font-medium">{String((r.lob as any).front_template_id ?? "-")}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Back Template</div>
-                      <div className="font-medium">{String((r.lob as any).back_template_id ?? "-")}</div>
-                    </div>
-                  </div>
-                ) : null}
-
-                {r.lob.object === "letter" ? (
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Template</div>
-                      <div className="font-medium">{String((r.lob as any).template_id ?? "-")}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Envelope</div>
-                      <div className="font-medium">{String((r.lob as any).envelope_type ?? "-")}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Page Count</div>
-                      <div className="font-medium">{String((r.lob as any).page_count ?? "-")}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Double Sided</div>
-                      <div className="font-medium">{(r.lob as any).double_sided ? "Yes" : "No"}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Color</div>
-                      <div className="font-medium">{(r.lob as any).color ? "Color" : "B/W"}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Address Placement</div>
-                      <div className="font-medium">{String((r.lob as any).address_placement ?? "-")}</div>
-                    </div>
-                  </div>
-                ) : null}
-
-                {r.lob.object === "snap_pack" ? (
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Outside Template</div>
-                      <div className="font-medium">{String((r.lob as any).outside_template_id ?? "-")}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Inside Template</div>
-                      <div className="font-medium">{String((r.lob as any).inside_template_id ?? "-")}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Outside Version</div>
-                      <div className="font-medium">{String((r.lob as any).outside_template_version_id ?? "-")}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Inside Version</div>
-                      <div className="font-medium">{String((r.lob as any).inside_template_version_id ?? "-")}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Size</div>
-                      <div className="font-medium">{String((r.lob as any).size ?? "-")}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Mail Type</div>
-                      <div className="font-medium">{String((r.lob as any).mail_type ?? "-")}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Expected Delivery</div>
-                      <div className="font-medium">{String((r.lob as any).expected_delivery_date ?? "-")}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Color</div>
-                      <div className="font-medium">{(r.lob as any).color ? "Color" : "B/W"}</div>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
+            {/* LOB Details removed; mailings are the source of truth */}
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <div className="text-xs text-muted-foreground">Delivered</div>

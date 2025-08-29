@@ -17,6 +17,7 @@ import { AIDialogPanel } from "./DirectMail/components/AIDialogPanel";
 import type { DirectMailCampaign } from "./DirectMail/utils/mock";
 import { generateDirectMailCampaignData } from "./DirectMail/utils/mock";
 import { DirectMailRowCarousel } from "./DirectMail/components/DirectMailRowCarousel";
+import CampaignModalMain from "./campaigns/modal/CampaignModalMain";
 
 type ParentTab = "calls" | "text" | "social" | "directMail";
 
@@ -30,6 +31,7 @@ export default function DirectMailCampaignsDemoTable({
   const [aiOpen, setAiOpen] = React.useState(false);
   const [aiOutput, setAiOutput] = React.useState<string>("");
   const [aiRows, setAiRows] = React.useState<DirectMailCampaign[]>([]);
+  const [createOpen, setCreateOpen] = React.useState(false);
   const campaignType = "Direct Mail" as const;
   const [dateChip, setDateChip] = React.useState<"today" | "7d" | "30d">("today");
 
@@ -137,14 +139,27 @@ export default function DirectMailCampaignsDemoTable({
             <h1 className="text-2xl font-semibold tracking-tight">Direct Mail Campaigns</h1>
             <p className="text-sm text-muted-foreground">Search, selection, filtering, and details.</p>
           </div>
-          {onNavigate && (
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("calls")}>Calls</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("text")}>Text</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("social")}>Social</Button>
-              <Button type="button" variant="default" size="sm" onClick={() => onNavigate("directMail")}>Direct Mail</Button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {onNavigate && (
+              <>
+                <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("calls")}>
+                  Calls
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("text")}>
+                  Text
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("social")}>
+                  Social
+                </Button>
+                <Button type="button" variant="default" size="sm" onClick={() => onNavigate("directMail")}>
+                  Direct Mail
+                </Button>
+              </>
+            )}
+            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+              Create Campaign
+            </Button>
+          </div>
         </div>
       </header>
       <SummaryPanel
@@ -221,6 +236,7 @@ export default function DirectMailCampaignsDemoTable({
         setAiOutput={setAiOutput}
         summarizeRows={summarizeRows}
       />
+      <CampaignModalMain open={createOpen} onOpenChange={setCreateOpen} defaultChannel="directmail" />
       <DirectMailRowCarousel
         table={table as any}
         open={carousel.open}

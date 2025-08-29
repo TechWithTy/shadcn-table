@@ -8,6 +8,7 @@ import { DataTableRowModalCarousel } from "../components/data-table/data-table-r
 import { useDataTable } from "../hooks/use-data-table";
 import { useRowCarousel } from "../hooks/use-row-carousel";
 import { Button } from "../components/ui/button";
+import CampaignModalMain from "./campaigns/modal/CampaignModalMain";
 
 import { type CallCampaign } from "../../../../types/_dashboard/campaign";
 import {
@@ -36,6 +37,7 @@ export default function TextCampaignsDemoTable({
   const [aiOutput, setAiOutput] = React.useState<string>("");
   const [aiRows, setAiRows] = React.useState<CallCampaign[]>([]);
   const [detailIndex, setDetailIndex] = React.useState(0);
+  const [createOpen, setCreateOpen] = React.useState(false);
   const campaignType = "Text" as const;
   const [dateChip, setDateChip] = React.useState<"today" | "7d" | "30d">("today");
 
@@ -115,14 +117,17 @@ export default function TextCampaignsDemoTable({
             <h1 className="text-2xl font-semibold tracking-tight">Text Campaigns</h1>
             <p className="text-sm text-muted-foreground">Search, selection, filtering, and details.</p>
           </div>
-          {onNavigate && (
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("calls")}>Calls</Button>
-              <Button type="button" variant="default" size="sm" onClick={() => onNavigate("text")}>Text</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("social")}>Social</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("directMail")}>Direct Mail</Button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {onNavigate && (
+              <>
+                <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("calls")}>Calls</Button>
+                <Button type="button" variant="default" size="sm" onClick={() => onNavigate("text")}>Text</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("social")}>Social</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => onNavigate("directMail")}>Direct Mail</Button>
+              </>
+            )}
+            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>Create Campaign</Button>
+          </div>
         </div>
       </header>
 
@@ -190,6 +195,7 @@ export default function TextCampaignsDemoTable({
         setIndex={carousel.setIndex}
         rows={carousel.rows as any}
       />
+      <CampaignModalMain open={createOpen} onOpenChange={setCreateOpen} />
     </main>
   );
 }
