@@ -288,8 +288,8 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues(),
     manualPagination: true,
-    manualSorting: true,
-    manualFiltering: true,
+    manualSorting: false,
+    manualFiltering: false,
   });
 
   return { table, shallow, debounceMs, throttleMs };

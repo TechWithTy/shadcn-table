@@ -1,0 +1,485 @@
+import * as React from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+
+import { DataTableColumnHeader } from "../../../../components/data-table/data-table-column-header";
+import { Checkbox } from "../../../../components/ui/checkbox";
+import { Button } from "../../../../components/ui/button";
+import { Badge } from "../../../../components/ui/badge";
+import type { CallCampaign } from "../../../../../../../types/_dashboard/campaign";
+import { PlaybackCell } from "../components/PlaybackCell";
+import { getTextMetric, getLastMessageAt, downloadCampaignZip } from "../../text/utils/helpers";
+
+export type CampaignType = "Calls" | "Text" | "Social" | "Direct Mail";
+
+function getPrimaryLabel(campaignType: CampaignType) {
+  return campaignType === "Calls"
+    ? "Calls"
+    : campaignType === "Text"
+    ? "Messages"
+    : campaignType === "Social"
+    ? "Actions"
+    : "Mailers";
+}
+
+export function buildCallCampaignColumns(
+  campaignType: CampaignType,
+): ColumnDef<CallCampaign>[] {
+  const primaryLabel = getPrimaryLabel(campaignType);
+
+  // Common: selection + name
+  const base: ColumnDef<CallCampaign>[] = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <div className="flex items-center gap-2 pl-2">
+          <div className="grid h-5 w-5 place-items-center">
+            <Checkbox
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              checked={
+                table.getIsAllPageRowsSelected() ||
+                (table.getIsSomePageRowsSelected() && "indeterminate")
+              }
+              onCheckedChange={(value: boolean | "indeterminate") => table.toggleAllPageRowsSelected(!!value)}
+              aria-label="Select all"
+              className="h-4 w-4 leading-none grid place-items-center"
+            />
+          </div>
+          <span className="text-xs text-muted-foreground select-none">Select</span>
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="grid h-10 place-items-center">
+          <Checkbox
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            checked={row.getIsSelected()}
+            onCheckedChange={(value: boolean | "indeterminate") => row.toggleSelected(!!value)}
+            aria-label="Select row"
+            className="h-4 w-4 leading-none grid place-items-center"
+          />
+        </div>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      size: 48,
+    },
+    {
+      accessorKey: "name",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Campaign Name" />
+      ),
+      cell: ({ getValue }) => (
+        <span className="block truncate max-w-[220px]" title={String(getValue())}>
+          {String(getValue())}
+        </span>
+      ),
+      enableColumnFilter: true,
+      meta: { label: "Campaign Name", variant: "text", placeholder: "Search name" },
+      size: 220,
+    },
+  ];
+
+  // Campaign-specific columns
+  if (campaignType === "Text") {
+    const textCols: ColumnDef<CallCampaign>[] = [
+      {
+        id: "sent",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Sent" />
+        ),
+        accessorFn: (row) => getTextMetric(row, "sent"),
+        cell: ({ row }) => (
+          <span className="tabular-nums">{getTextMetric(row.original, "sent")}</span>
+        ),
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const n = Number(row.getValue(id) ?? 0);
+          if (!Array.isArray(value)) return true;
+          const [min, max] = value as (number | undefined)[];
+          if (min != null && n < min) return false;
+          if (max != null && n > max) return false;
+          return true;
+        },
+        meta: { label: "Sent", variant: "range" },
+        size: 80,
+      },
+      {
+        id: "delivered",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Delivered" />
+        ),
+        accessorFn: (row) => getTextMetric(row, "delivered"),
+        cell: ({ row }) => (
+          <span className="tabular-nums">{getTextMetric(row.original, "delivered")}</span>
+        ),
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const n = Number(row.getValue(id) ?? 0);
+          if (!Array.isArray(value)) return true;
+          const [min, max] = value as (number | undefined)[];
+          if (min != null && n < min) return false;
+          if (max != null && n > max) return false;
+          return true;
+        },
+        meta: { label: "Delivered", variant: "range" },
+        size: 96,
+      },
+      {
+        id: "failed",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Failed" />
+        ),
+        accessorFn: (row) => getTextMetric(row, "failed"),
+        cell: ({ row }) => (
+          <span className="tabular-nums">{getTextMetric(row.original, "failed")}</span>
+        ),
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const n = Number(row.getValue(id) ?? 0);
+          if (!Array.isArray(value)) return true;
+          const [min, max] = value as (number | undefined)[];
+          if (min != null && n < min) return false;
+          if (max != null && n > max) return false;
+          return true;
+        },
+        meta: { label: "Failed", variant: "range" },
+        size: 80,
+      },
+      {
+        id: "totalMessages",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Total Messages" />
+        ),
+        accessorFn: (row) => getTextMetric(row, "total"),
+        cell: ({ row }) => (
+          <span className="tabular-nums">{getTextMetric(row.original, "total")}</span>
+        ),
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const n = Number(row.getValue(id) ?? 0);
+          if (!Array.isArray(value)) return true;
+          const [min, max] = value as (number | undefined)[];
+          if (min != null && n < min) return false;
+          if (max != null && n > max) return false;
+          return true;
+        },
+        meta: { label: "Total Messages", variant: "range" },
+        size: 120,
+      },
+      {
+        id: "lastMessageAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Last Message Sent" />
+        ),
+        accessorFn: (row) => {
+          const raw = (row as any)?.textStats?.lastMessageAt ?? (row as any)?.lastMessageAt;
+          const t = new Date(String(raw)).getTime();
+          return isNaN(t) ? 0 : t;
+        },
+        cell: ({ row }) => {
+          const d = getLastMessageAt(row.original);
+          return <span className="tabular-nums">{d}</span>;
+        },
+        enableColumnFilter: false,
+        size: 160,
+      },
+    ];
+
+    const statusAndDate: ColumnDef<CallCampaign>[] = [
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const v = String(row.getValue(id) ?? "");
+          return Array.isArray(value) ? value.includes(v) : String(value) === v;
+        },
+        meta: {
+          label: "Status",
+          variant: "multiSelect",
+          options: [
+            { label: "Delivering", value: "delivering" },
+            { label: "Completed", value: "completed" },
+            { label: "Failed", value: "failed" },
+            { label: "Missed", value: "missed" },
+            { label: "Delivered", value: "delivered" },
+            { label: "Pending", value: "pending" },
+            { label: "Queued", value: "queued" },
+            { label: "Read", value: "read" },
+            { label: "Unread", value: "unread" },
+          ],
+        },
+        cell: ({ getValue }) => (
+          <span className="block truncate max-w-[140px]" title={String(getValue())}>
+            {String(getValue())}
+          </span>
+        ),
+        size: 140,
+      },
+      {
+        accessorKey: "startDate",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Start Date" />
+        ),
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const raw = row.getValue(id);
+          const t = new Date(String(raw)).getTime();
+          if (!Array.isArray(value)) return true;
+          const [from, to] = value as (number | undefined)[];
+          if (from && t < from) return false;
+          if (to && t > to) return false;
+          return true;
+        },
+        meta: { label: "Start Date", variant: "dateRange" },
+        cell: ({ getValue }) => {
+          const d = new Date(String(getValue()));
+          return (
+            <span className="tabular-nums">{isNaN(d.getTime()) ? "-" : d.toLocaleDateString()}</span>
+          );
+        },
+        size: 120,
+      },
+    ];
+
+    const downloadCol: ColumnDef<CallCampaign> = {
+      id: "download",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Download Messages" />
+      ),
+      cell: ({ row }) => (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={(e) => {
+            e.stopPropagation();
+            void downloadCampaignZip(row.original);
+          }}
+        >
+          Download ZIP
+        </Button>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      size: 160,
+    };
+
+    return [...base, ...textCols, ...statusAndDate, downloadCol];
+  }
+
+  // Default (Calls/Social/Direct Mail) use existing numeric columns
+  const defaultCols: ColumnDef<CallCampaign>[] = [
+    {
+      accessorKey: "calls",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={primaryLabel} />
+      ),
+      cell: ({ getValue }) => <span className="tabular-nums">{String(getValue())}</span>,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const n = Number(row.getValue(id) ?? 0);
+        if (!Array.isArray(value)) return true;
+        const [min, max] = value as (number | undefined)[];
+        if (min != null && n < min) return false;
+        if (max != null && n > max) return false;
+        return true;
+      },
+      meta: { label: primaryLabel, variant: "range" },
+      size: 80,
+    },
+    {
+      accessorKey: "inQueue",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Queued" />
+      ),
+      cell: ({ getValue }) => <span className="tabular-nums">{String(getValue())}</span>,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const n = Number(row.getValue(id) ?? 0);
+        if (!Array.isArray(value)) return true;
+        const [min, max] = value as (number | undefined)[];
+        if (min != null && n < min) return false;
+        if (max != null && n > max) return false;
+        return true;
+      },
+      meta: { label: "Queued", variant: "range" },
+      size: 80,
+    },
+    {
+      accessorKey: "leads",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Leads" />
+      ),
+      cell: ({ getValue }) => <span className="tabular-nums">{String(getValue())}</span>,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const n = Number(row.getValue(id) ?? 0);
+        if (!Array.isArray(value)) return true;
+        const [min, max] = value as (number | undefined)[];
+        if (min != null && n < min) return false;
+        if (max != null && n > max) return false;
+        return true;
+      },
+      meta: { label: "Leads", variant: "range" },
+      size: 80,
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const v = String(row.getValue(id) ?? "");
+        return Array.isArray(value) ? value.includes(v) : String(value) === v;
+      },
+      meta: {
+        label: "Status",
+        variant: "multiSelect",
+        options: [
+          { label: "Delivering", value: "delivering" },
+          { label: "Completed", value: "completed" },
+          { label: "Failed", value: "failed" },
+          { label: "Missed", value: "missed" },
+          { label: "Delivered", value: "delivered" },
+          { label: "Pending", value: "pending" },
+          { label: "Queued", value: "queued" },
+          { label: "Read", value: "read" },
+          { label: "Unread", value: "unread" },
+        ],
+      },
+      cell: ({ getValue }) => (
+        <span className="block truncate max-w-[140px]" title={String(getValue())}>
+          {String(getValue())}
+        </span>
+      ),
+      size: 140,
+    },
+    // Singular Transfer badge column
+    {
+      id: "transfer",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Transfer" />
+      ),
+      enableColumnFilter: true,
+      accessorFn: (row) => {
+        const t = (row as any).transfer as { type?: string } | undefined;
+        return t?.type ?? "";
+      },
+      filterFn: (row, id, value) => {
+        const v = String(row.getValue(id) ?? "");
+        return Array.isArray(value) ? value.includes(v) : String(value) === v;
+      },
+      meta: {
+        label: "Transfer",
+        variant: "select",
+        options: [
+          { label: "Chat", value: "chat_agent" },
+          { label: "Voice (In)", value: "voice_inbound" },
+          { label: "Voice (Out)", value: "voice_outbound" },
+          { label: "Text", value: "text" },
+          { label: "Social", value: "social_media" },
+          { label: "Appraisal", value: "appraisal" },
+          { label: "Live Person", value: "live_person" },
+          { label: "Live Person Calendar", value: "live_person_calendar" },
+        ],
+      },
+      cell: ({ row }) => {
+        const t = (row.original as any).transfer as
+          | { type: string; agentId: string }
+          | undefined;
+        if (!t) return <span>-</span>;
+        const label =
+          t.type === "chat_agent"
+            ? "Chat"
+            : t.type === "voice_inbound"
+            ? "Voice (In)"
+            : t.type === "voice_outbound"
+            ? "Voice (Out)"
+            : t.type === "text"
+            ? "Text"
+            : t.type === "social_media"
+            ? "Social"
+            : t.type === "appraisal"
+            ? "Appraisal"
+            : t.type === "live_person"
+            ? "Live Person"
+            : t.type === "live_person_calendar"
+            ? "Live Person Calendar"
+            : t.type;
+        return <Badge title={t.agentId}>{label}</Badge>;
+      },
+      size: 140,
+    },
+    
+    {
+      accessorKey: "transfers",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Transfers" />
+      ),
+      cell: ({ getValue }) => (
+        <span className="tabular-nums">{String(getValue() ?? 0)}</span>
+      ),
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const n = Number(row.getValue(id) ?? 0);
+        if (!Array.isArray(value)) return true;
+        const [min, max] = value as (number | undefined)[];
+        if (min != null && n < min) return false;
+        if (max != null && n > max) return false;
+        return true;
+      },
+      meta: { label: "Transfers", variant: "range" },
+      size: 110,
+    },
+    {
+      id: "startDate",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Start Date" />
+      ),
+      enableColumnFilter: true,
+      accessorFn: (row) => {
+        const t = new Date(String((row as any).startDate)).getTime();
+        return isNaN(t) ? 0 : t;
+      },
+      filterFn: (row, id, value) => {
+        const raw = row.getValue(id);
+        const t = typeof raw === "number" ? raw : new Date(String(raw)).getTime();
+        if (!Array.isArray(value)) return true;
+        const [from, to] = value as (number | undefined)[];
+        if (from && t < from) return false;
+        if (to && t > to) return false;
+        return true;
+      },
+      meta: { label: "Start Date", variant: "dateRange" },
+      cell: ({ getValue }) => {
+        const raw = getValue();
+        const d = new Date(typeof raw === "number" ? raw : String(raw));
+        return (
+          <span className="tabular-nums">{isNaN(d.getTime()) ? "-" : d.toLocaleDateString()}</span>
+        );
+      },
+      size: 120,
+    },
+  ];
+
+  // Add playback only for Calls
+  if (campaignType === "Calls") {
+    defaultCols.push({
+      id: "playback",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Playback" />
+      ),
+      cell: ({ row }) => (
+        <PlaybackCell callInformation={row.original.callInformation ?? []} />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      size: 220,
+    });
+  }
+
+  return [...base, ...defaultCols];
+}

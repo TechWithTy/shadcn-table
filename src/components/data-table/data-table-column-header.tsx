@@ -49,9 +49,7 @@ export function DataTableColumnHeader<TData, TValue>({
             <ChevronDown />
           ) : column.getIsSorted() === "asc" ? (
             <ChevronUp />
-          ) : (
-            <ChevronsUpDown />
-          ))}
+          ) : null)}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-28">
         {column.getCanSort() && (

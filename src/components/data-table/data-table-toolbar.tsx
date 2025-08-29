@@ -47,6 +47,18 @@ export function DataTableToolbar<TData>({
       <div className="flex flex-1 flex-wrap items-center gap-2" />
       <div className="flex items-center gap-2">
         {children}
+        {isFiltered && (
+          <Button
+            type="button"
+            aria-label="Clear all filters"
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={onReset}
+          >
+            <X className="mr-1 h-3 w-3" /> Clear
+          </Button>
+        )}
         <Popover>
           <PopoverTrigger asChild>
             <Button type="button" variant="outline" size="sm">
