@@ -13,8 +13,10 @@ import type { Lead } from "./_lib/mock";
 import { makeLeads } from "./_lib/mock";
 import { getLeadColumns } from "./columns";
 import { Button } from "../../components/ui/button";
-import LeadMainModal from "../../../../../components/reusables/modals/user/lead/LeadModalMain";
-import SkipTraceModalMain from "../../../../../components/reusables/modals/user/skipTrace/SkipTraceModalMain";
+import LeadMainModal from "./lead-modal/LeadModalMain";
+import SkipTraceModalMain from "./skip-trace/SkipTraceModalMain";
+import AddLeadListModalMain from "./lead-list/AddLeadListModalMain";
+import { LEAD_LISTS_MOCK } from "../../constants/leadLists.mock";
 
 export function LeadsTable() {
   const data = React.useMemo<Lead[]>(() => makeLeads(200), []);
@@ -32,8 +34,15 @@ export function LeadsTable() {
   const carousel = useRowCarousel(table, { loop: true });
 
   // Local UI state for modals
+  const [isAddLeadListOpen, setIsAddLeadListOpen] = React.useState(false);
   const [isCreateLeadOpen, setIsCreateLeadOpen] = React.useState(false);
   const [isSkipTraceOpen, setIsSkipTraceOpen] = React.useState(false);
+
+  // In-session lead lists state used by Lead and Skip Trace modals
+  const [leadLists, setLeadLists] = React.useState<{ id: string; name: string }[]>(() => LEAD_LISTS_MOCK);
+  const handleAddList = React.useCallback((list: { id: string; name: string }) => {
+    setLeadLists((prev) => [list, ...prev]);
+  }, []);
 
   // Example of multi-list Excel ZIP: statuses as separate files (each filtered by status)
   const excelZipItems = React.useMemo(() => {
@@ -57,8 +66,11 @@ export function LeadsTable() {
           <DataTableSortList table={table} align="start" />
           <DataTableExportButton table={table} filename="leads" excelZipItems={excelZipItems} />
           <div className="ml-auto flex items-center gap-2">
+            <Button type="button" variant="outline" onClick={() => setIsAddLeadListOpen(true)}>
+              Add Lead List
+            </Button>
             <Button type="button" onClick={() => setIsCreateLeadOpen(true)}>
-              Create Lead
+              Add Lead
             </Button>
             <Button type="button" variant="outline" onClick={() => setIsSkipTraceOpen(true)}>
               Skip Trace
@@ -96,8 +108,9 @@ export function LeadsTable() {
         )}
       />
       {/* Modals */}
-      <LeadMainModal isOpen={isCreateLeadOpen} onClose={() => setIsCreateLeadOpen(false)} />
-      <SkipTraceModalMain isOpen={isSkipTraceOpen} onClose={() => setIsSkipTraceOpen(false)} />
+      <AddLeadListModalMain isOpen={isAddLeadListOpen} onClose={() => setIsAddLeadListOpen(false)} onAddList={handleAddList} />
+      <LeadMainModal isOpen={isCreateLeadOpen} onClose={() => setIsCreateLeadOpen(false)} existingLists={leadLists} />
+      <SkipTraceModalMain isOpen={isSkipTraceOpen} onClose={() => setIsSkipTraceOpen(false)} existingLists={leadLists} />
     </>
   );
 }
