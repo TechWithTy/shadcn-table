@@ -25,6 +25,8 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { toast } from "@/components/ui/use-toast";
+import LeadMainModal from "@/components/reusables/modals/user/lead/LeadModalMain";
+import SkipTraceModalMain from "@/components/reusables/modals/user/skipTrace/SkipTraceModalMain";
 
 // Demo data type
 type SocialLink = { label: string; url: string };
@@ -504,6 +506,11 @@ export default function LeadsDemoTable() {
   const [loading, setLoading] = React.useState(false);
   const [hasMore, setHasMore] = React.useState(true);
   const sentinelRef = React.useRef<HTMLDivElement | null>(null);
+  const [isLeadModalOpen, setIsLeadModalOpen] = React.useState(false);
+  const [isSkipTraceOpen, setIsSkipTraceOpen] = React.useState(false);
+  const [skipTraceInit, setSkipTraceInit] = React.useState<
+    { type: "list"; file?: File } | { type: "single" } | undefined
+  >(undefined);
 
   // Infinite scroll config
   const BATCH_SIZE = 100;
@@ -724,8 +731,44 @@ export default function LeadsDemoTable() {
             filename="lists"
             excludeColumns={["select"]}
           />
+          {/* Lead actions */}
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSkipTraceInit({ type: "list" });
+                setIsSkipTraceOpen(true);
+              }}
+            >
+              Add Lead List
+            </Button>
+            <Button type="button" size="sm" onClick={() => setIsLeadModalOpen(true)}>
+              Add Lead
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setSkipTraceInit(undefined);
+                setIsSkipTraceOpen(true);
+              }}
+            >
+              Skip Trace
+            </Button>
+          </div>
         </DataTableToolbar>
       </DataTable>
+
+      {/* Lead/Skip Trace Modals */}
+      <LeadMainModal isOpen={isLeadModalOpen} onClose={() => setIsLeadModalOpen(false)} />
+      <SkipTraceModalMain
+        isOpen={isSkipTraceOpen}
+        onClose={() => setIsSkipTraceOpen(false)}
+        initialData={skipTraceInit}
+      />
 
       {/* AI Actions Modal */}
       <Dialog open={aiOpen} onOpenChange={setAiOpen}>

@@ -12,6 +12,9 @@ import { useRowCarousel } from "../../hooks/use-row-carousel";
 import type { Lead } from "./_lib/mock";
 import { makeLeads } from "./_lib/mock";
 import { getLeadColumns } from "./columns";
+import { Button } from "../../components/ui/button";
+import LeadMainModal from "../../../../../components/reusables/modals/user/lead/LeadModalMain";
+import SkipTraceModalMain from "../../../../../components/reusables/modals/user/skipTrace/SkipTraceModalMain";
 
 export function LeadsTable() {
   const data = React.useMemo<Lead[]>(() => makeLeads(200), []);
@@ -27,6 +30,10 @@ export function LeadsTable() {
   });
 
   const carousel = useRowCarousel(table, { loop: true });
+
+  // Local UI state for modals
+  const [isCreateLeadOpen, setIsCreateLeadOpen] = React.useState(false);
+  const [isSkipTraceOpen, setIsSkipTraceOpen] = React.useState(false);
 
   // Example of multi-list Excel ZIP: statuses as separate files (each filtered by status)
   const excelZipItems = React.useMemo(() => {
@@ -49,6 +56,14 @@ export function LeadsTable() {
         <DataTableAdvancedToolbar table={table}>
           <DataTableSortList table={table} align="start" />
           <DataTableExportButton table={table} filename="leads" excelZipItems={excelZipItems} />
+          <div className="ml-auto flex items-center gap-2">
+            <Button type="button" onClick={() => setIsCreateLeadOpen(true)}>
+              Create Lead
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setIsSkipTraceOpen(true)}>
+              Skip Trace
+            </Button>
+          </div>
         </DataTableAdvancedToolbar>
       </DataTable>
       <DataTableRowModalCarousel
@@ -80,6 +95,9 @@ export function LeadsTable() {
           </div>
         )}
       />
+      {/* Modals */}
+      <LeadMainModal isOpen={isCreateLeadOpen} onClose={() => setIsCreateLeadOpen(false)} />
+      <SkipTraceModalMain isOpen={isSkipTraceOpen} onClose={() => setIsSkipTraceOpen(false)} />
     </>
   );
 }
