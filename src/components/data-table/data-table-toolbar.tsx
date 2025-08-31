@@ -38,15 +38,12 @@ export function DataTableToolbar<TData>({
     <div
       role="toolbar"
       aria-orientation="horizontal"
-      className={cn(
-        "flex w-full items-start justify-between gap-2 p-1",
-        className,
-      )}
+      className={cn("flex w-full flex-col gap-2 p-1", className)}
       {...props}
     >
-      <div className="flex flex-1 flex-wrap items-center gap-2" />
-      <div className="flex items-center gap-2">
-        {children}
+      {/* Row 1: main actions (children) and Clear button */}
+      <div className="flex w-full items-center justify-between gap-2">
+        <div className="flex flex-1 flex-wrap items-center gap-2">{children}</div>
         {isFiltered && (
           <Button
             type="button"
@@ -59,6 +56,10 @@ export function DataTableToolbar<TData>({
             <X className="mr-1 h-3 w-3" /> Clear
           </Button>
         )}
+      </div>
+
+      {/* Row 2: Filters popover and View options aligned to the right */}
+      <div className="flex w-full items-center justify-end gap-2">
         <Popover>
           <PopoverTrigger asChild>
             <Button type="button" variant="outline" size="sm">

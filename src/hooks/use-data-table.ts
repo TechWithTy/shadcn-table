@@ -122,20 +122,75 @@ function buildGlobalDncSourceColumn<TData>(): ColumnDef<TData> {
         (r["source"] as string | undefined);
       if (explicit && typeof explicit === "string" && explicit.trim()) return explicit;
 
+      // Canonical type, if provided
+      const canonical =
+        (r["dncSourceType"] as string | undefined) ??
+        (r["dnc_source_type"] as string | undefined) ??
+        (r["campaignType"] as string | undefined) ??
+        (r["channel"] as string | undefined) ??
+        (r["primaryType"] as string | undefined);
+      if (canonical && typeof canonical === "string") {
+        const c = canonical.toLowerCase();
+        if (c.includes("text") || c === "sms") return "Text";
+        if (c.includes("email")) return "Email";
+        if (c.includes("call") || c.includes("voice")) return "Call";
+        if (c.includes("dm") || c.includes("social")) return "DM";
+      }
+
       // Heuristics based on common flags
       const dncList = Boolean(r["dncList"]);
       const dncNum = typeof r["dnc"] === "number" ? (r["dnc"] as number) : undefined;
       const optedOut = Boolean(r["optedOut"] ?? r["optOut"] ?? r["doNotContact"]);
       const emailOptOut = Boolean(
-        (r["emailOptIn"] === false) || r["emailOptOut"] || r["unsubscribed"] || r["unsub"]
+        r["emailOptOut"] || r["unsubscribed"] || r["unsub"] || (r["emailOptIn"] === false)
       );
-      const scaCall = Boolean(r["scaCall"] ?? r["sca_call"]);
+      const callOptOut = Boolean(r["scaCall"] ?? r["sca_call"] ?? r["callOptOut"] ?? r["call_opt_out"]);
+      const textOptOut = Boolean(
+        r["smsOptOut"] || r["textOptOut"] || r["sms_opt_out"] || r["text_opt_out"] || (r["smsOptIn"] === false)
+      );
+      const manualPopIn = Boolean(
+        r["manualDnc"] || r["manual_dnc"] || r["manuallyAddedToDnc"] || r["addedToDnc"]
+      );
 
-      if (scaCall) return "SCA Call";
-      if (emailOptOut) return "Email Opt-out";
+      if (textOptOut) return "Text Opt-out";
+      if (emailOptOut) return "Email";
+      if (callOptOut) return "Call";
+      if (manualPopIn) return "Pop-in to DNC";
       if (dncList) return "Scrub List";
-      if (typeof dncNum === "number" && dncNum > 0) return "Campaign DNC";
-      if (optedOut) return "Opt-out";
+      if (typeof dncNum === "number" && dncNum > 0) {
+        // Try to infer campaign type to be specific instead of generic "Campaign DNC"
+        const keys = Object.keys(r);
+        const hasAnyKey = (names: string[]) => names.some((n) => keys.includes(n));
+        const isCallLike = hasAnyKey([
+          "callInformation",
+          "callType",
+          "callerNumber",
+          "endedReason",
+        ]);
+        const isDmLike = hasAnyKey(["platform", "actions"]);
+        const isEmailLike = hasAnyKey([
+          "subject",
+          "from",
+          "to",
+          "email",
+          "emailCampaignId",
+        ]);
+        const isTextLike = hasAnyKey([
+          "smsOptOut",
+          "smsOptIn",
+          "textOptOut",
+          "message",
+          "messages",
+        ]);
+
+        // Prefer text/email/dm over call so not everything collapses to Call
+        if (isTextLike) return "Text";
+        if (isEmailLike) return "Email";
+        if (isDmLike) return "DM";
+        if (isCallLike) return "Call";
+        return "";
+      }
+      if (optedOut) return "Text Opt-out";
       return "";
     },
     cell: ({ getValue }) => {
@@ -152,11 +207,12 @@ function buildGlobalDncSourceColumn<TData>(): ColumnDef<TData> {
       label: "DNC Source",
       variant: "select",
       options: [
-        { label: "SCA Call", value: "SCA Call" },
-        { label: "Email Opt-out", value: "Email Opt-out" },
+        { label: "Text Opt-out", value: "Text Opt-out" },
+        { label: "Email", value: "Email" },
+        { label: "Call", value: "Call" },
+        { label: "DM", value: "DM" },
+        { label: "Pop-in to DNC", value: "Pop-in to DNC" },
         { label: "Scrub List", value: "Scrub List" },
-        { label: "Campaign DNC", value: "Campaign DNC" },
-        { label: "Opt-out", value: "Opt-out" },
         { label: "(empty)", value: "(empty)" },
       ],
     },
