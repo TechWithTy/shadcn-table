@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Holidays from "date-holidays";
 
 interface TimingPreferencesStepProps {
@@ -25,6 +27,12 @@ export const TimingPreferencesStep: FC<TimingPreferencesStepProps> = ({ onNext, 
     setReachOnWeekend,
     reachOnHolidays,
     setReachOnHolidays,
+    getTimezoneFromLeadLocation,
+    setGetTimezoneFromLeadLocation,
+    minDailyAttempts,
+    setMinDailyAttempts,
+    maxDailyAttempts,
+    setMaxDailyAttempts,
   } = useCampaignCreationStore();
 
   // Initialize holidays for default country (US). Adjust if you add UI for country selection.
@@ -35,25 +43,23 @@ export const TimingPreferencesStep: FC<TimingPreferencesStepProps> = ({ onNext, 
     return day === 0 || day === 6;
   };
 
+  const minAttemptsError = minDailyAttempts < 1;
+  const maxAttemptsError = maxDailyAttempts < minDailyAttempts;
+
   const isHoliday = (d: Date) => Boolean(hd.isHoliday(d));
 
-  const handleDateSelection = (range: { from?: Date; to?: Date } | undefined) => {
-    if (!range) return;
-    const { from, to } = range;
-    if (from) {
-      if (!reachOnWeekend && isWeekend(from)) return;
-      if (!reachOnHolidays && isHoliday(from)) return;
-      setStartDate(new Date(from));
-    }
-    if (typeof to !== "undefined") {
-      if (!to) {
-        setEndDate(null);
-      } else {
-        if (!reachOnWeekend && isWeekend(to)) return;
-        if (!reachOnHolidays && isHoliday(to)) return;
-        setEndDate(new Date(to));
-      }
-    }
+  const handleStartSelect = (d?: Date) => {
+    if (!d) return;
+    if (!reachOnWeekend && isWeekend(d)) return;
+    if (!reachOnHolidays && isHoliday(d)) return;
+    setStartDate(new Date(d));
+  };
+
+  const handleEndSelect = (d?: Date) => {
+    if (!d) return;
+    if (!reachOnWeekend && isWeekend(d)) return;
+    if (!reachOnHolidays && isHoliday(d)) return;
+    setEndDate(new Date(d));
   };
 
   return (
@@ -62,39 +68,126 @@ export const TimingPreferencesStep: FC<TimingPreferencesStepProps> = ({ onNext, 
 
       <div className="space-y-1">
         <Label>Select Start Date And End Date</Label>
-        <div className="flex justify-center">
-          <Calendar
-            mode="range"
-            selected={{ from: startDate, to: endDate ?? undefined }}
-            onSelect={handleDateSelection}
-            numberOfMonths={2}
-            fromDate={new Date()}
-            orientation="horizontal"
-            disabled={(date) => {
-              const weekendDisabled = !reachOnWeekend && isWeekend(date);
-              const holidayDisabled = !reachOnHolidays && isHoliday(date);
-              return weekendDisabled || holidayDisabled;
-            }}
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="justify-start">
+                {startDate ? startDate.toLocaleDateString() : "Start date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="p-2">
+              <Calendar
+                mode="single"
+                selected={startDate ?? undefined}
+                onSelect={handleStartSelect}
+                fromDate={new Date()}
+                disabled={(date) => {
+                  const weekendDisabled = !reachOnWeekend && isWeekend(date);
+                  const holidayDisabled = !reachOnHolidays && isHoliday(date);
+                  return weekendDisabled || holidayDisabled;
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="justify-start">
+                {endDate ? (endDate as Date).toLocaleDateString() : "End date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="p-2">
+              <Calendar
+                mode="single"
+                selected={(endDate as Date) ?? undefined}
+                onSelect={handleEndSelect}
+                fromDate={startDate ?? new Date()}
+                disabled={(date) => {
+                  const weekendDisabled = !reachOnWeekend && isWeekend(date);
+                  const holidayDisabled = !reachOnHolidays && isHoliday(date);
+                  return weekendDisabled || holidayDisabled;
+                }}
+              />
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Checkbox id="beforeBiz" checked={reachBeforeBusiness} onCheckedChange={(v) => setReachBeforeBusiness(!!v)} />
-          <Label htmlFor="beforeBiz">Reach before business hours</Label>
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium">Timing preferences</h3>
+        {/* Dial attempt limits per day */}
+        <h4 className="text-xs font-medium text-muted-foreground">Dialing</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="minDailyAttempts">Min attempts per day</Label>
+            <Input
+              id="minDailyAttempts"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={20}
+              value={minDailyAttempts}
+              onChange={(e) => {
+                const v = Math.max(1, Number(e.target.value || 0));
+                // Only set min; show inline error if max < min instead of auto-adjusting
+                setMinDailyAttempts(v);
+              }}
+            />
+            {minAttemptsError && (
+              <p className="text-xs text-destructive">Minimum attempts must be at least 1.</p>
+            )}
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="maxDailyAttempts">Max attempts per day</Label>
+            <Input
+              id="maxDailyAttempts"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={50}
+              value={maxDailyAttempts}
+              onChange={(e) => {
+                const v = Math.max(0, Number(e.target.value || 0));
+                // Only set max; show inline error if max < min instead of auto-adjusting
+                setMaxDailyAttempts(v);
+              }}
+            />
+            {maxAttemptsError && (
+              <p className="text-xs text-destructive">Max attempts must be greater than or equal to Min attempts.</p>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Checkbox id="afterBiz" checked={reachAfterBusiness} onCheckedChange={(v) => setReachAfterBusiness(!!v)} />
-          <Label htmlFor="afterBiz">Reach after business hours</Label>
-        </div>
-        <div className="flex items-center gap-2">
-          <Checkbox id="weekend" checked={reachOnWeekend} onCheckedChange={(v) => setReachOnWeekend(!!v)} />
-          <Label htmlFor="weekend">Reach on weekends</Label>
-        </div>
-        <div className="flex items-center gap-2">
-          <Checkbox id="holidays" checked={reachOnHolidays} onCheckedChange={(v) => setReachOnHolidays(!!v)} />
-          <Label htmlFor="holidays">Reach on holidays</Label>
+        <h4 className="text-xs font-medium text-muted-foreground">Reach windows</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex items-center gap-2">
+            <Checkbox id="beforeBiz" checked={reachBeforeBusiness} onCheckedChange={(v) => setReachBeforeBusiness(!!v)} />
+            <Label htmlFor="beforeBiz">Reach before business hours</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="afterBiz" checked={reachAfterBusiness} onCheckedChange={(v) => setReachAfterBusiness(!!v)} />
+            <Label htmlFor="afterBiz">Reach after business hours</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="weekend" checked={reachOnWeekend} onCheckedChange={(v) => setReachOnWeekend(!!v)} />
+            <Label htmlFor="weekend">Reach on weekends</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="holidays" checked={reachOnHolidays} onCheckedChange={(v) => setReachOnHolidays(!!v)} />
+            <Label htmlFor="holidays">Reach on holidays</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="tzFromLeadLocation"
+              checked={getTimezoneFromLeadLocation}
+              disabled
+              onCheckedChange={(v) => setGetTimezoneFromLeadLocation(!!v)}
+            />
+            <Label htmlFor="tzFromLeadLocation">Get timezone from lead location</Label>
+          </div>
+          {getTimezoneFromLeadLocation && (
+            <p className="text-xs text-muted-foreground pl-6 sm:col-span-2">
+              Timezone will be auto-detected per lead using geo-tz based on their location.
+            </p>
+          )}
         </div>
       </div>
 

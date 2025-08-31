@@ -643,6 +643,119 @@ export function buildCallCampaignColumns(
         size: 160,
       },
     );
+    // Dialing configuration columns
+    defaultCols.push(
+      {
+        id: "totalDialAttempts",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Total Dial Attempts" />
+        ),
+        accessorFn: (row) => (row as any).totalDialAttempts ?? 0,
+        cell: ({ getValue }) => (
+          <span className="tabular-nums">{String(getValue() ?? 0)}</span>
+        ),
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const n = Number(row.getValue(id) ?? 0);
+          if (!Array.isArray(value)) return true;
+          const [min, max] = value as (number | undefined)[];
+          if (min != null && n < min) return false;
+          if (max != null && n > max) return false;
+          return true;
+        },
+        meta: { label: "Total Dial Attempts", variant: "range" },
+        size: 140,
+      },
+      {
+        id: "maxDailyAttempts",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Max Daily Attempts" />
+        ),
+        accessorFn: (row) => (row as any).maxDailyAttempts ?? 0,
+        cell: ({ getValue }) => (
+          <span className="tabular-nums">{String(getValue() ?? 0)}</span>
+        ),
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const n = Number(row.getValue(id) ?? 0);
+          if (!Array.isArray(value)) return true;
+          const [min, max] = value as (number | undefined)[];
+          if (min != null && n < min) return false;
+          if (max != null && n > max) return false;
+          return true;
+        },
+        meta: { label: "Max Daily Attempts", variant: "range" },
+        size: 150,
+      },
+      {
+        id: "minMinutesBetweenCalls",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Min Minutes Between Calls" />
+        ),
+        accessorFn: (row) => (row as any).minMinutesBetweenCalls ?? 0,
+        cell: ({ getValue }) => (
+          <span className="tabular-nums">{String(getValue() ?? 0)}</span>
+        ),
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const n = Number(row.getValue(id) ?? 0);
+          if (!Array.isArray(value)) return true;
+          const [min, max] = value as (number | undefined)[];
+          if (min != null && n < min) return false;
+          if (max != null && n > max) return false;
+          return true;
+        },
+        meta: { label: "Min Minutes Between Calls", variant: "range" },
+        size: 190,
+      },
+      {
+        id: "countVoicemailAsAnswered",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="VM Counts as Answered" />
+        ),
+        accessorFn: (row) => ((row as any).countVoicemailAsAnswered ? "true" : "false"),
+        cell: ({ row }) => {
+          const v = Boolean((row.original as any).countVoicemailAsAnswered);
+          return <Badge variant={v ? "default" : "outline"}>{v ? "Yes" : "No"}</Badge>;
+        },
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const v = String(row.getValue(id) ?? "false");
+          return Array.isArray(value) ? value.includes(v) : String(value) === v;
+        },
+        meta: {
+          label: "VM Counts as Answered",
+          variant: "select",
+          options: [
+            { label: "Yes", value: "true" },
+            { label: "No", value: "false" },
+          ],
+        },
+        size: 170,
+      },
+      {
+        id: "postCallWebhookUrl",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Post-Call Webhook" />
+        ),
+        accessorFn: (row) => (row as any).postCallWebhookUrl ?? "",
+        cell: ({ getValue }) => (
+          <span className="block truncate max-w-[220px]" title={String(getValue() ?? "")}>
+            {String(getValue() ?? "-")}
+          </span>
+        ),
+        enableColumnFilter: true,
+        filterFn: (row, id, value) => {
+          const v = String(row.getValue(id) ?? "").toLowerCase();
+          const search = String(value ?? "").toLowerCase();
+          if (!search) return true;
+          return v.includes(search);
+        },
+        meta: { label: "Post-Call Webhook", variant: "text", placeholder: "Search URL" },
+        size: 220,
+      },
+    );
+
     defaultCols.push({
       id: "playback",
       header: ({ column }) => (

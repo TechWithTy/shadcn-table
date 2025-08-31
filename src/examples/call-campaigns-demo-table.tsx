@@ -140,6 +140,12 @@ export default function CallCampaignsDemoTable({
       "costTotal",
       "startedAt",
       "endedAt",
+      // Dialing configuration & webhook
+      "totalDialAttempts",
+      "maxDailyAttempts",
+      "minMinutesBetweenCalls",
+      "countVoicemailAsAnswered",
+      "postCallWebhookUrl",
       // existing date and playback columns
       "startDate",
       "playback",
