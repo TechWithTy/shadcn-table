@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type * as z from "zod";
+import { X } from "lucide-react";
 
-import ChannelCustomizationStep, { FormSchema } from "./steps/ChannelCustomizationStep";
+import ChannelCustomizationStep, { FormSchema, TransferConditionalSchema } from "./steps/ChannelCustomizationStep";
 import ChannelSelectionStep from "./steps/ChannelSelectionStep";
 import FinalizeCampaignStep from "./steps/FinalizeCampaignStep";
 import { TimingPreferencesStep } from "./steps/TimingPreferencesStep";
@@ -66,7 +67,7 @@ export default function CampaignModalMain({
   const [step, setStep] = useState(0);
 
   const customizationForm = useForm<z.infer<typeof FormSchema>>({
-    resolver: zodResolver(FormSchema),
+    resolver: zodResolver(TransferConditionalSchema),
     defaultValues: {
       primaryPhoneNumber: "+11234567890",
       areaMode: (areaMode as any) || "leadList",
@@ -75,6 +76,8 @@ export default function CampaignModalMain({
       transferEnabled: true,
       transferType: "inbound_call",
       transferAgentId: "",
+      transferGuidelines: "",
+      transferPrompt: "",
     },
   });
 
@@ -97,8 +100,8 @@ export default function CampaignModalMain({
     if (open) {
       // ensure we always start at step 0 when opening
       setStep(0);
-      // If caller provided a default channel and none is set, select it
-      if (!primaryChannel && defaultChannel) {
+      // Always set provided default channel on open to reflect tab source
+      if (defaultChannel) {
         setPrimaryChannel(defaultChannel);
       }
     } else {
@@ -114,18 +117,18 @@ export default function CampaignModalMain({
         transferEnabled: true,
         transferType: "inbound_call",
         transferAgentId: "",
+        transferGuidelines: "",
+        transferPrompt: "",
       });
     }
   }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="fixed left-1/2 top-1/2 z-50 w-full max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-background text-foreground shadow-lg outline-none h-[85vh] max-h-[85vh] overflow-hidden flex flex-col p-0 gap-0">
-        <div className="p-6 pb-0">
-          {/* Optional header space for title/actions if needed */}
-        </div>
-        {/* Body scroll area: max height subtracts header (approx 56px) and small gaps */}
-        <div className="px-6 pb-6 pr-7 max-h-[calc(85vh-64px)] overflow-y-auto">
+      <DialogContent className="fixed left-1/2 top-1/2 z-50 w-full max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-background text-foreground shadow-lg outline-none h-[85vh] max-h-[85vh] min-h-0 overflow-hidden flex flex-col p-0 gap-0">
+        <div className="relative p-6 pb-0">{/* Optional header space for title/actions if needed */}</div>
+        {/* Body scroll area: use flex-1 + min-h-0 to allow internal scrolling */}
+        <div className="flex-1 min-h-0 px-6 pb-6 pr-7 overflow-y-auto">
           {step === 0 && (
             <ChannelSelectionStep
               onNext={nextStep}

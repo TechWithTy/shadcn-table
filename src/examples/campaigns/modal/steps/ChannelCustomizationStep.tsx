@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Button } from "../../../../components/ui/button";
 import { Textarea } from "../../../../components/ui/textarea";
 import { Checkbox } from "../../../../components/ui/checkbox";
+import AllRecipientDropdown from "../../../../../../ai-avatar-dropdown/AllRecipientDropdown";
 
 // * Step 2: Channel Customization
 import type { UseFormReturn } from "react-hook-form";
@@ -60,6 +61,8 @@ export const FormSchema = z
       .enum(["inbound_call", "outbound_call", "social", "text", "chat_live_person", "appraisal", "live_avatar"])
       .default("inbound_call"),
     transferAgentId: z.string().optional(),
+    transferGuidelines: z.string().default(""),
+    transferPrompt: z.string().default(""),
   })
   .refine(
     (data) => {
@@ -92,6 +95,18 @@ export const FormSchema = z
     },
     { message: "Please select an agent to transfer to.", path: ["transferAgentId"] },
   );
+
+// Additional conditional validations for transfer text fields
+export const TransferConditionalSchema = FormSchema.superRefine((data, ctx) => {
+  if (data.transferEnabled) {
+    if (!data.transferGuidelines || data.transferGuidelines.trim().length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Transfer guidelines are required when transfer is enabled.", path: ["transferGuidelines"] });
+    }
+    if (!data.transferPrompt || data.transferPrompt.trim().length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Transfer prompt/message is required when transfer is enabled.", path: ["transferPrompt"] });
+    }
+  }
+});
 
 const ChannelCustomizationStep: FC<ChannelCustomizationStepProps> = ({ onNext, onBack, form }) => {
   const {
@@ -126,9 +141,13 @@ const ChannelCustomizationStep: FC<ChannelCustomizationStepProps> = ({ onNext, o
     return <div className="text-red-500">Please select a channel first.</div>;
   }
 
+  const watchedTransferType = form.watch("transferType");
+  const isLivePerson = watchedTransferType === "chat_live_person" || watchedTransferType === "appraisal";
+
   return (
     <Form {...form}>
-      <div className="space-y-6">
+      <div className="h-full flex flex-col">
+        <div className="flex-1 min-h-0 space-y-6 overflow-y-auto pr-1">
         <h2 className="font-semibold text-lg">Channel Customization</h2>
         <p className="text-gray-500 text-sm">Customize settings for your {primaryChannel} campaign.</p>
 
@@ -191,38 +210,49 @@ const ChannelCustomizationStep: FC<ChannelCustomizationStepProps> = ({ onNext, o
               name="transferAgentId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Select Agent</FormLabel>
+                  <FormLabel>{isLivePerson ? "Select Employee/Subuser" : "Select Agent"}</FormLabel>
                   <FormControl>
-                    <Select
-                      onValueChange={(val) => {
+                    <AllRecipientDropdown
+                      value={field.value}
+                      onChange={(val) => {
                         field.onChange(val);
                         setSelectedAgentId(val);
                       }}
-                      defaultValue={field.value}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an agent" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableAgents.map((agent) => (
-                          <SelectItem key={agent.id} value={agent.id}>
-                            <div className="flex items-center gap-2">
-                              <span>{agent.name}</span>
-                              <span
-                                className={`h-2 w-2 rounded-full ${
-                                  agent.status === "active"
-                                    ? "bg-green-500"
-                                    : agent.status === "away"
-                                    ? "bg-yellow-500"
-                                    : "bg-gray-400"
-                                }`}
-                                title={agent.status}
-                              />
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      availablePeople={availableAgents}
+                      transferType={watchedTransferType}
+                      placeholderAgent="Select an agent"
+                      placeholderEmployee="Select an employee or subuser"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Transfer Guidelines */}
+            <FormField
+              control={form.control}
+              name="transferGuidelines"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Transfer Guidelines</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Provide brief guidelines for the live agent (context, do/don'ts, handoff notes)" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Transfer Prompt / Message */}
+            <FormField
+              control={form.control}
+              name="transferPrompt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Transfer Prompt / Message</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="What should be sent or spoken to initiate/announce the transfer?" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -382,7 +412,7 @@ const ChannelCustomizationStep: FC<ChannelCustomizationStepProps> = ({ onNext, o
             )}
           />
         )}
-
+        </div>
         <CampaignNavigation onBack={onBack} onNext={onNext} />
       </div>
     </Form>

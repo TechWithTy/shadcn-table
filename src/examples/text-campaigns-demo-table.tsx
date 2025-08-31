@@ -195,7 +195,7 @@ export default function TextCampaignsDemoTable({
         setIndex={carousel.setIndex}
         rows={carousel.rows as any}
       />
-      <CampaignModalMain open={createOpen} onOpenChange={setCreateOpen} />
+      <CampaignModalMain open={createOpen} onOpenChange={setCreateOpen} defaultChannel="text" />
     </main>
   );
 }

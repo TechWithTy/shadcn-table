@@ -72,6 +72,8 @@ export interface CampaignCreationState {
 	setReachAfterBusiness: (v: boolean) => void;
 	reachOnWeekend: boolean;
 	setReachOnWeekend: (v: boolean) => void;
+	reachOnHolidays: boolean;
+	setReachOnHolidays: (v: boolean) => void;
 
 	// Utility: Reset
 	reset: () => void;
@@ -117,6 +119,8 @@ export const useCampaignCreationStore = create<CampaignCreationState>((set) => (
 	setReachAfterBusiness: (reachAfterBusiness) => set({ reachAfterBusiness }),
 	reachOnWeekend: false,
 	setReachOnWeekend: (reachOnWeekend) => set({ reachOnWeekend }),
+	reachOnHolidays: false,
+	setReachOnHolidays: (reachOnHolidays) => set({ reachOnHolidays }),
 
 	// Reset function
 	reset: () =>
@@ -143,5 +147,6 @@ export const useCampaignCreationStore = create<CampaignCreationState>((set) => (
 			reachBeforeBusiness: false,
 			reachAfterBusiness: false,
 			reachOnWeekend: false,
+			reachOnHolidays: false,
 		}),
 }));

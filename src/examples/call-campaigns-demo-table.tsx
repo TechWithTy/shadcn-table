@@ -16,6 +16,7 @@ import { useRowCarousel } from "../hooks/use-row-carousel";
 import { SummaryCard } from "./Phone/call/components/SummaryCard";
 import { StatusQuickActions } from "./Phone/call/components/StatusQuickActions";
 import { buildCallCampaignColumns, type CampaignType } from "./Phone/call/utils/buildColumns";
+import CampaignModalMain from "./campaigns/modal/CampaignModalMain";
 
 import { type CallCampaign } from "../../../../types/_dashboard/campaign";
 import {
@@ -37,6 +38,7 @@ export default function CallCampaignsDemoTable({
   const [detailIndex, setDetailIndex] = React.useState(0);
   const [campaignType, setCampaignType] = React.useState<CampaignType>("Calls");
   const [dateChip, setDateChip] = React.useState<"today" | "7d" | "30d">("today");
+  const [createOpen, setCreateOpen] = React.useState(false);
   // In-memory DNC list keyed by campaign id or name for demo purposes
   const [dncSet, setDncSet] = React.useState<Set<string>>(new Set());
   const [dncFilter, setDncFilter] = React.useState<"all" | "only" | "hide">("all");
@@ -195,6 +197,7 @@ export default function CallCampaignsDemoTable({
             >
               Direct Mail
             </Button>
+            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>Create Campaign</Button>
           </div>
         </div>
       </header>
@@ -296,6 +299,7 @@ export default function CallCampaignsDemoTable({
         detailIndex={detailIndex}
         setDetailIndex={setDetailIndex}
       />
+      <CampaignModalMain open={createOpen} onOpenChange={setCreateOpen} defaultChannel="call" />
     </main>
   );
 }
