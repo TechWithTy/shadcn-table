@@ -2,6 +2,7 @@
 
 import {
   type ColumnFiltersState,
+  type ColumnDef,
   getCoreRowModel,
   getFacetedMinMaxValues,
   getFacetedRowModel,
@@ -64,9 +65,108 @@ interface UseDataTableProps<TData>
   startTransition?: React.TransitionStartFunction;
 }
 
+// Build a global DNC column that attempts to read common opt-out flags on the row
+function buildGlobalDncColumn<TData>(): ColumnDef<TData> {
+  return {
+    id: "globalDnc",
+    header: "DNC",
+    accessorFn: (row) => {
+      const r = row as unknown as Record<string, unknown>;
+      // Common flags across app types
+      const v =
+        (r["dncList"] as boolean | undefined) ??
+        (r["dnc"] as boolean | number | undefined) ??
+        (r["optedOut"] as boolean | undefined) ??
+        (r["optOut"] as boolean | undefined) ??
+        (r["doNotContact"] as boolean | undefined) ??
+        (r["globalDnc"] as boolean | undefined) ??
+        false;
+      // If numeric (e.g., campaigns summary), treat >0 as true
+      if (typeof v === "number") return v > 0;
+      return Boolean(v);
+    },
+    cell: ({ getValue }) => (Boolean(getValue()) ? "Yes" : "No"),
+    enableColumnFilter: true,
+    filterFn: (row, id, value) => {
+      const raw = row.getValue(id);
+      const is = Boolean(raw);
+      if (!Array.isArray(value)) return true;
+      // value expected to be ["true"] or ["false"] or both
+      const v = is ? "true" : "false";
+      return value.includes(v);
+    },
+    meta: {
+      label: "DNC",
+      variant: "select",
+      options: [
+        { label: "Yes", value: "true" },
+        { label: "No", value: "false" },
+      ],
+    },
+    size: 70,
+  } satisfies ColumnDef<TData>;
+}
+
+// Build a companion column that shows the source/reason for DNC when applicable
+function buildGlobalDncSourceColumn<TData>(): ColumnDef<TData> {
+  return {
+    id: "globalDncSource",
+    header: "DNC Source",
+    accessorFn: (row) => {
+      const r = row as unknown as Record<string, unknown>;
+      // Explicit source fields take precedence
+      const explicit =
+        (r["dncSource"] as string | undefined) ??
+        (r["dnc_source"] as string | undefined) ??
+        (r["unsubscribeSource"] as string | undefined) ??
+        (r["source"] as string | undefined);
+      if (explicit && typeof explicit === "string" && explicit.trim()) return explicit;
+
+      // Heuristics based on common flags
+      const dncList = Boolean(r["dncList"]);
+      const dncNum = typeof r["dnc"] === "number" ? (r["dnc"] as number) : undefined;
+      const optedOut = Boolean(r["optedOut"] ?? r["optOut"] ?? r["doNotContact"]);
+      const emailOptOut = Boolean(
+        (r["emailOptIn"] === false) || r["emailOptOut"] || r["unsubscribed"] || r["unsub"]
+      );
+      const scaCall = Boolean(r["scaCall"] ?? r["sca_call"]);
+
+      if (scaCall) return "SCA Call";
+      if (emailOptOut) return "Email Opt-out";
+      if (dncList) return "Scrub List";
+      if (typeof dncNum === "number" && dncNum > 0) return "Campaign DNC";
+      if (optedOut) return "Opt-out";
+      return "";
+    },
+    cell: ({ getValue }) => {
+      const v = (getValue() as string) ?? "";
+      return v && v.trim() ? v : "—";
+    },
+    enableColumnFilter: true,
+    filterFn: (row, id, value) => {
+      const raw = (row.getValue(id) as string) ?? "";
+      if (!Array.isArray(value) || value.length === 0) return true;
+      return value.includes(raw) || (raw === "" && value.includes("(empty)"));
+    },
+    meta: {
+      label: "DNC Source",
+      variant: "select",
+      options: [
+        { label: "SCA Call", value: "SCA Call" },
+        { label: "Email Opt-out", value: "Email Opt-out" },
+        { label: "Scrub List", value: "Scrub List" },
+        { label: "Campaign DNC", value: "Campaign DNC" },
+        { label: "Opt-out", value: "Opt-out" },
+        { label: "(empty)", value: "(empty)" },
+      ],
+    },
+    size: 130,
+  } satisfies ColumnDef<TData>;
+}
+
 export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   const {
-    columns,
+    columns: providedColumns,
     pageCount = -1,
     initialState,
     history = "replace",
@@ -140,6 +240,41 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     },
     [pagination, setPage, setPerPage],
   );
+
+  // Augment columns with a global DNC column, unless caller already has one
+  const columns = React.useMemo<ColumnDef<TData>[]>(() => {
+    const hasDnc = (providedColumns ?? []).some(
+      (c) => c.id === "globalDnc" || c.id === "dnc" || ("accessorKey" in (c as any) && (c as any).accessorKey === "dnc"),
+    );
+    const hasDncSource = (providedColumns ?? []).some(
+      (c) => c.id === "globalDncSource" || ("accessorKey" in (c as any) && (c as any).accessorKey === "dncSource"),
+    );
+
+    // Always make sure DNC column exists; if user already has one, keep as-is but still consider injecting source next to it
+    const dncCol = hasDnc ? undefined : buildGlobalDncColumn<TData>();
+    const sourceCol = hasDncSource ? undefined : buildGlobalDncSourceColumn<TData>();
+
+    let out = providedColumns.slice();
+    const selectIdx = out.findIndex((c) => c.id === "select");
+    let insertBaseIdx = selectIdx >= 0 ? selectIdx + 1 : 0;
+
+    if (dncCol) {
+      out.splice(insertBaseIdx, 0, dncCol);
+      insertBaseIdx += 1;
+    } else {
+      // If DNC already exists, place source right after the existing DNC
+      const existingDncIdx = out.findIndex(
+        (c) => c.id === "globalDnc" || c.id === "dnc" || ((c as any).accessorKey === "dnc")
+      );
+      if (existingDncIdx >= 0) insertBaseIdx = existingDncIdx + 1;
+    }
+
+    if (sourceCol) {
+      out.splice(insertBaseIdx, 0, sourceCol);
+    }
+
+    return out;
+  }, [providedColumns]);
 
   const columnIds = React.useMemo(() => {
     return new Set(
@@ -258,10 +393,35 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     [debouncedSetFilterValues, filterableColumns, enableAdvancedFilter],
   );
 
+  // If consumer provided a custom columnOrder, insert globalDnc after 'select'
+  const adjustedInitialState = React.useMemo(() => {
+    if (!initialState?.columnOrder) return initialState;
+    const order = initialState.columnOrder.slice();
+    const has = order.includes("globalDnc");
+    const hasSrc = order.includes("globalDncSource");
+    const selectIdx = order.indexOf("select");
+    let insertAt = selectIdx >= 0 ? selectIdx + 1 : 0;
+
+    if (!has) {
+      order.splice(insertAt, 0, "globalDnc");
+      insertAt += 1;
+    } else {
+      // If DNC exists, ensure source is placed right after it when adding
+      const dncIdx = order.indexOf("globalDnc");
+      if (dncIdx >= 0) insertAt = dncIdx + 1;
+    }
+
+    if (!hasSrc) {
+      order.splice(insertAt, 0, "globalDncSource");
+    }
+
+    return { ...initialState, columnOrder: order };
+  }, [initialState]);
+
   const table = useReactTable({
     ...tableProps,
     columns,
-    initialState,
+    initialState: adjustedInitialState,
     pageCount,
     state: {
       pagination,
