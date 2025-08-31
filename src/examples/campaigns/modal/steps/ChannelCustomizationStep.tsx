@@ -1,5 +1,5 @@
 import type { FC } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -63,6 +63,19 @@ export const FormSchema = z
     transferAgentId: z.string().optional(),
     transferGuidelines: z.string().default(""),
     transferPrompt: z.string().default(""),
+    // Number Pooling (Calls/Text only)
+    numberPoolingEnabled: z.boolean().default(false),
+    messagingServiceSid: z
+      .string()
+      .trim()
+      .optional()
+      .refine((val) => !val || /^MG[a-zA-Z0-9]{32}$/.test(val), {
+        message: "Must start with 'MG' and be a valid Twilio SID",
+      }),
+    senderPoolNumbersCsv: z.string().default(""), // CSV of E.164 numbers
+    smartEncodingEnabled: z.boolean().default(true),
+    optOutHandlingEnabled: z.boolean().default(true),
+    perNumberDailyLimit: z.number().int().nonnegative().default(75),
   })
   .refine(
     (data) => {
@@ -118,10 +131,35 @@ const ChannelCustomizationStep: FC<ChannelCustomizationStepProps> = ({ onNext, o
     setLeadCount,
     availableAgents,
     setSelectedAgentId,
+    // Number pooling store fields
+    numberPoolingEnabled,
+    setNumberPoolingEnabled,
+    messagingServiceSid,
+    setMessagingServiceSid,
+    senderPoolNumbersCsv,
+    setSenderPoolNumbersCsv,
+    smartEncodingEnabled,
+    setSmartEncodingEnabled,
+    optOutHandlingEnabled,
+    setOptOutHandlingEnabled,
+    perNumberDailyLimit,
+    setPerNumberDailyLimit,
+    availableSenderNumbers,
+    selectedSenderNumbers,
+    setSelectedSenderNumbers,
+    numberSelectionStrategy,
+    setNumberSelectionStrategy,
+    setAvailableSenderNumbers,
   } = useCampaignCreationStore();
 
   const watchedAreaMode = form.watch("areaMode");
   const watchedDirectMailType = form.watch("directMailType");
+  const watchedPrimaryChannel = primaryChannel;
+  const poolingEnabled = form.watch("numberPoolingEnabled");
+
+  const [poolingExpanded, setPoolingExpanded] = useState(false);
+  const [loadingNumbers, setLoadingNumbers] = useState(false);
+  const [numbersError, setNumbersError] = useState<string | null>(null);
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "templates" });
 
@@ -136,6 +174,87 @@ const ChannelCustomizationStep: FC<ChannelCustomizationStepProps> = ({ onNext, o
       form.setValue("selectedLeadListId", "");
     }
   }, [watchedAreaMode, setLeadCount, setSelectedLeadListId, form]);
+
+  // Initialize form with store-backed defaults for number pooling
+  useEffect(() => {
+    form.setValue("numberPoolingEnabled", numberPoolingEnabled);
+    form.setValue("messagingServiceSid", messagingServiceSid || "");
+    form.setValue("senderPoolNumbersCsv", senderPoolNumbersCsv || "");
+    form.setValue("smartEncodingEnabled", smartEncodingEnabled);
+    form.setValue("optOutHandlingEnabled", optOutHandlingEnabled);
+    form.setValue("perNumberDailyLimit", perNumberDailyLimit ?? 75);
+    // Expand if enabled to show current values
+    if (numberPoolingEnabled) setPoolingExpanded(true);
+    // If CSV had values but no explicit selections, hydrate selection from CSV
+    if ((senderPoolNumbersCsv?.trim()?.length || 0) > 0 && (selectedSenderNumbers?.length || 0) === 0) {
+      const parsed = senderPoolNumbersCsv
+        .split(/[\n,]+/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      setSelectedSenderNumbers(parsed);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync form -> store for number pooling fields
+  useEffect(() => {
+    const sub = form.watch((vals, { name }) => {
+      switch (name) {
+        case "numberPoolingEnabled":
+          setNumberPoolingEnabled(Boolean(vals.numberPoolingEnabled));
+          break;
+        case "messagingServiceSid":
+          setMessagingServiceSid(vals.messagingServiceSid || "");
+          break;
+        case "senderPoolNumbersCsv":
+          setSenderPoolNumbersCsv(vals.senderPoolNumbersCsv || "");
+          break;
+        case "smartEncodingEnabled":
+          setSmartEncodingEnabled(Boolean(vals.smartEncodingEnabled));
+          break;
+        case "optOutHandlingEnabled":
+          setOptOutHandlingEnabled(Boolean(vals.optOutHandlingEnabled));
+          break;
+        case "perNumberDailyLimit":
+          setPerNumberDailyLimit(Number(vals.perNumberDailyLimit ?? 75));
+          break;
+        default:
+          break;
+      }
+    });
+    return () => sub.unsubscribe();
+  }, [form, setNumberPoolingEnabled, setMessagingServiceSid, setSenderPoolNumbersCsv, setSmartEncodingEnabled, setOptOutHandlingEnabled, setPerNumberDailyLimit]);
+
+  // On first expand, fetch connected numbers from server and populate store
+  useEffect(() => {
+    if (!poolingExpanded) return;
+    // Only fetch once if list is empty or still mocked
+    if ((availableSenderNumbers?.length || 0) > 0) return;
+    let isActive = true;
+    (async () => {
+      try {
+        setLoadingNumbers(true);
+        setNumbersError(null);
+        const res = await fetch("/api/twilio/numbers", { cache: "no-store" });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || `Request failed: ${res.status}`);
+        }
+        const data: { numbers?: string[] } = await res.json();
+        if (isActive) {
+          setAvailableSenderNumbers(data.numbers || []);
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (isActive) setNumbersError(msg);
+      } finally {
+        if (isActive) setLoadingNumbers(false);
+      }
+    })();
+    return () => {
+      isActive = false;
+    };
+  }, [poolingExpanded, availableSenderNumbers, setAvailableSenderNumbers]);
 
   if (!primaryChannel) {
     return <div className="text-red-500">Please select a channel first.</div>;
@@ -163,6 +282,150 @@ const ChannelCustomizationStep: FC<ChannelCustomizationStepProps> = ({ onNext, o
             </FormItem>
           )}
         />
+
+        {/* Number Pooling (Calls/Text) */}
+        {(watchedPrimaryChannel === "text" || watchedPrimaryChannel === "call") && (
+          <div className="space-y-2 border rounded-md p-3">
+            <div className="flex items-center justify-between">
+              <FormField
+                control={form.control}
+                name="numberPoolingEnabled"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2">
+                    <Checkbox id="number-pooling-enabled" checked={field.value} onCheckedChange={(v) => field.onChange(Boolean(v))} />
+                    <FormLabel className="!m-0" htmlFor="number-pooling-enabled">Enable Number Pooling</FormLabel>
+                  </FormItem>
+                )}
+              />
+              <Button type="button" variant="ghost" onClick={() => setPoolingExpanded((s) => !s)}>
+                {poolingExpanded ? "Hide" : "Show"}
+              </Button>
+            </div>
+
+            {poolingExpanded && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Selection strategy */}
+                <div>
+                  <FormLabel>Number selection strategy</FormLabel>
+                  <div className="mt-1">
+                    <Select
+                      value={numberSelectionStrategy}
+                      onValueChange={(v) => setNumberSelectionStrategy(v as any)}
+                      disabled={!poolingEnabled}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose strategy" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="round_robin">Round-robin</SelectItem>
+                        <SelectItem value="sticky_by_lead">Sticky by lead</SelectItem>
+                        <SelectItem value="random">Random</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Sender numbers multi-select */}
+                <div className="md:col-span-2">
+                  <FormLabel>Sender Numbers</FormLabel>
+                  <div className="text-xs text-muted-foreground mb-1">
+                    Selected {selectedSenderNumbers.length} of {availableSenderNumbers.length}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    {availableSenderNumbers.map((num) => {
+                      const checked = selectedSenderNumbers.includes(num);
+                      return (
+                        <label key={num} className={`flex items-center gap-2 border rounded-md px-3 py-2 ${!poolingEnabled ? "opacity-50" : ""}`}>
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              if (!poolingEnabled) return;
+                              const next = v
+                                ? Array.from(new Set([...selectedSenderNumbers, num]))
+                                : selectedSenderNumbers.filter((n) => n !== num);
+                              setSelectedSenderNumbers(next);
+                              // keep CSV in sync under the hood for backward compatibility
+                              const csv = next.join(", ");
+                              form.setValue("senderPoolNumbersCsv", csv);
+                              setSenderPoolNumbersCsv(csv);
+                            }}
+                            disabled={!poolingEnabled}
+                          />
+                          <span>{num}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="messagingServiceSid"
+                  render={({ field }) => (
+                  <FormItem>
+                    <FormLabel htmlFor="twilio-messaging-service-sid">Messaging Service SID</FormLabel>
+                    <FormControl>
+                        <input id="twilio-messaging-service-sid" className="w-full border rounded-md px-3 py-2 bg-background" placeholder="MGXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" disabled={!poolingEnabled} {...field} />
+                    </FormControl>
+                    <div className="text-xs text-muted-foreground">Twilio Console → Messaging → Services</div>
+                    <FormMessage />
+                  </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="perNumberDailyLimit"
+                  render={({ field }) => (
+                  <FormItem>
+                    <FormLabel htmlFor="per-number-daily-limit">Per-number daily limit</FormLabel>
+                    <FormControl>
+                        <input id="per-number-daily-limit" type="number" min={1} className="w-full border rounded-md px-3 py-2 bg-background" value={field.value ?? 75} onChange={(e) => field.onChange(Number(e.target.value))} disabled={!poolingEnabled} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="smartEncodingEnabled"
+                  render={({ field }) => (
+                  <FormItem className="flex items-center gap-2">
+                      <Checkbox id="smart-encoding-toggle" checked={field.value} onCheckedChange={(v) => field.onChange(Boolean(v))} disabled={!poolingEnabled} />
+                      <FormLabel className="!m-0" htmlFor="smart-encoding-toggle">Smart Encoding</FormLabel>
+                  </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="optOutHandlingEnabled"
+                  render={({ field }) => (
+                  <FormItem className="flex items-center gap-2">
+                      <Checkbox id="opt-out-handling-toggle" checked={field.value} onCheckedChange={(v) => field.onChange(Boolean(v))} disabled={!poolingEnabled} />
+                      <FormLabel className="!m-0" htmlFor="opt-out-handling-toggle">Opt-out Handling</FormLabel>
+                  </FormItem>
+                  )}
+                />
+
+                {/* Keep CSV field in form for validation/back-compat but hide the input */}
+                <FormField
+                  control={form.control}
+                  name="senderPoolNumbersCsv"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormControl>
+                        <input type="hidden" value={field.value} onChange={field.onChange} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Transfer toggle and agent selection */}
         <div className="space-y-3">

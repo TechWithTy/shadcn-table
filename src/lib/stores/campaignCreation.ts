@@ -75,6 +75,30 @@ export interface CampaignCreationState {
 	reachOnHolidays: boolean;
 	setReachOnHolidays: (v: boolean) => void;
 
+	// Number Pooling (Calls/Text)
+	numberPoolingEnabled: boolean;
+	setNumberPoolingEnabled: (v: boolean) => void;
+	messagingServiceSid: string;
+	setMessagingServiceSid: (sid: string) => void;
+	senderPoolNumbersCsv: string; // CSV of E.164 numbers
+	setSenderPoolNumbersCsv: (csv: string) => void;
+	smartEncodingEnabled: boolean;
+	setSmartEncodingEnabled: (v: boolean) => void;
+	optOutHandlingEnabled: boolean;
+	setOptOutHandlingEnabled: (v: boolean) => void;
+	perNumberDailyLimit: number; // >=1 recommended
+	setPerNumberDailyLimit: (n: number) => void;
+
+	// Sender pool UI/data
+	availableSenderNumbers: string[]; // connected numbers (mocked for now)
+	setAvailableSenderNumbers: (nums: string[]) => void;
+	selectedSenderNumbers: string[];
+	setSelectedSenderNumbers: (nums: string[]) => void;
+	numberSelectionStrategy: "round_robin" | "sticky_by_lead" | "random";
+	setNumberSelectionStrategy: (
+		s: "round_robin" | "sticky_by_lead" | "random",
+	) => void;
+
 	// Utility: Reset
 	reset: () => void;
 }
@@ -122,6 +146,33 @@ export const useCampaignCreationStore = create<CampaignCreationState>((set) => (
 	reachOnHolidays: false,
 	setReachOnHolidays: (reachOnHolidays) => set({ reachOnHolidays }),
 
+	// Number Pooling (Calls/Text)
+	numberPoolingEnabled: false,
+	setNumberPoolingEnabled: (numberPoolingEnabled) => set({ numberPoolingEnabled }),
+	messagingServiceSid: "",
+	setMessagingServiceSid: (messagingServiceSid) => set({ messagingServiceSid }),
+	senderPoolNumbersCsv: "",
+	setSenderPoolNumbersCsv: (senderPoolNumbersCsv) => set({ senderPoolNumbersCsv }),
+	smartEncodingEnabled: true,
+	setSmartEncodingEnabled: (smartEncodingEnabled) => set({ smartEncodingEnabled }),
+	optOutHandlingEnabled: true,
+	setOptOutHandlingEnabled: (optOutHandlingEnabled) => set({ optOutHandlingEnabled }),
+	perNumberDailyLimit: 75,
+	setPerNumberDailyLimit: (perNumberDailyLimit) => set({ perNumberDailyLimit }),
+
+	// Sender pool UI/data
+	availableSenderNumbers: [
+		"+15551230001",
+		"+15551230002",
+		"+15551230003",
+		"+15551230004",
+	],
+	setAvailableSenderNumbers: (availableSenderNumbers) => set({ availableSenderNumbers }),
+	selectedSenderNumbers: [],
+	setSelectedSenderNumbers: (selectedSenderNumbers) => set({ selectedSenderNumbers }),
+	numberSelectionStrategy: "round_robin",
+	setNumberSelectionStrategy: (numberSelectionStrategy) => set({ numberSelectionStrategy }),
+
 	// Reset function
 	reset: () =>
 		set({
@@ -148,5 +199,21 @@ export const useCampaignCreationStore = create<CampaignCreationState>((set) => (
 			reachAfterBusiness: false,
 			reachOnWeekend: false,
 			reachOnHolidays: false,
+
+			// Number Pooling
+			numberPoolingEnabled: false,
+			messagingServiceSid: "",
+			senderPoolNumbersCsv: "",
+			smartEncodingEnabled: true,
+			optOutHandlingEnabled: true,
+			perNumberDailyLimit: 75,
+			availableSenderNumbers: [
+				"+15551230001",
+				"+15551230002",
+				"+15551230003",
+				"+15551230004",
+			],
+			selectedSenderNumbers: [],
+			numberSelectionStrategy: "round_robin",
 		}),
 }));
