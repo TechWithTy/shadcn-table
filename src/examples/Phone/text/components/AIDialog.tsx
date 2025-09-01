@@ -95,6 +95,61 @@ export function AIDialog({ open, onOpenChange, aiRows, aiOutput, setAiOutput, su
             </TooltipTrigger>
             <TooltipContent side="top" sideOffset={10} className="z-[60] mb-1">Mock report (no download)</TooltipContent>
           </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setAiOutput("Starting AI-assisted campaign creation… (mock)")}
+                className="min-w-[200px] rounded-md border bg-card p-4 text-left shadow-xs hover:bg-accent focus:outline-none snap-start"
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-pink-500" />
+                  <div className="font-medium">Create Campaign with AI</div>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">Draft a new campaign from selected data</div>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={10} className="z-[60] mb-1">Prototype action (mock)</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  if (aiRows.length !== 2) {
+                    setAiOutput("Select exactly two rows to compare as A/B test.");
+                    return;
+                  }
+                  const a = aiRows[0]!;
+                  const b = aiRows[1]!;
+                  const aCalls = a.calls ?? 0;
+                  const bCalls = b.calls ?? 0;
+                  const aLeads = a.leads ?? 0;
+                  const bLeads = b.leads ?? 0;
+                  const callsWinner = aCalls === bCalls ? "Tie" : aCalls > bCalls ? "A" : "B";
+                  const leadsWinner = aLeads === bLeads ? "Tie" : aLeads > bLeads ? "A" : "B";
+                  setAiOutput(
+                    [
+                      "A/B Comparison (mock)",
+                      `Calls — A:${aCalls} vs B:${bCalls} (Winner: ${callsWinner})`,
+                      `Leads — A:${aLeads} vs B:${bLeads} (Winner: ${leadsWinner})`,
+                    ].join("\n"),
+                  );
+                }}
+                disabled={aiRows.length !== 2}
+                className="min-w-[200px] rounded-md border bg-card p-4 text-left shadow-xs hover:bg-accent focus:outline-none snap-start disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-teal-500" />
+                  <div className="font-medium">Compare as A/B Test</div>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">Requires exactly two selections</div>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={10} className="z-[60] mb-1">Select two rows to compare</TooltipContent>
+          </Tooltip>
         </div>
 
         <div className="rounded-md border bg-muted/40 p-3 text-xs whitespace-pre-wrap mt-3">
