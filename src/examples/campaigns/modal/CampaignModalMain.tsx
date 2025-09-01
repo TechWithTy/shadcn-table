@@ -29,6 +29,9 @@ export default function CampaignModalMain({
   const {
     areaMode,
     selectedLeadListId,
+    setSelectedLeadListId,
+    selectedLeadListAId,
+    setSelectedLeadListAId,
     leadCount,
     daysSelected,
     setDaysSelected,
@@ -45,6 +48,8 @@ export default function CampaignModalMain({
     setAbTestingEnabled,
     campaignName,
     setCampaignName,
+    // validation helper
+    isLeadListSelectionValid,
   } = useCampaignCreationStore();
 
   const days = startDate && endDate
@@ -90,6 +95,10 @@ export default function CampaignModalMain({
     if (step === 1) {
       const isValid = await customizationForm.trigger();
       if (!isValid) return;
+      // Additional guard: if A/B testing is enabled with lead lists, require both lists
+      if (areaMode === "leadList" && abTestingEnabled && !isLeadListSelectionValid()) {
+        return;
+      }
     }
     setStep((s) => s + 1);
   };
@@ -100,13 +109,22 @@ export default function CampaignModalMain({
     closeModal();
   };
 
-  const handleCreateAbTest = () => {
+  const handleCreateAbTest = (label?: string) => {
     // Enable A/B testing and duplicate current campaign setup.
     // Keep dialog open and restart at step 0 with all data preserved in the store.
     setAbTestingEnabled(true);
-    // Optional: suffix to distinguish variant name for quick edits
-    if (campaignName && !campaignName.toLowerCase().includes("variant b")) {
-      setCampaignName(`${campaignName} (Variant B)`);
+    // Use provided variation label (from popover) with a sensible default
+    const variantLabel = (label || "Variant B").trim();
+    if (campaignName) {
+      // Remove any existing (Variant X) suffix to avoid duplications, then apply the new one
+      const base = campaignName.replace(/\s*\(Variant[^)]*\)$/i, "").trim();
+      setCampaignName(`${base} (${variantLabel})`);
+    }
+    // If the user had a single lead list selected before enabling A/B, seed Variant A with it
+    if (areaMode === "leadList" && selectedLeadListId && !selectedLeadListAId) {
+      setSelectedLeadListAId(selectedLeadListId);
+      // Optionally clear the single-select field to avoid ambiguity in UI state
+      setSelectedLeadListId("");
     }
     setStep(0);
   };

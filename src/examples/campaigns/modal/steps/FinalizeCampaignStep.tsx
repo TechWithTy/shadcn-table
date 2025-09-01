@@ -1,11 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "../../../../components/ui/form";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { FC } from "react";
+import { useState } from "react";
 import { FormProvider, useForm, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCampaignCreationStore } from "@/lib/stores/campaignCreation";
@@ -15,7 +17,7 @@ interface FinalizeCampaignStepProps {
   estimatedCredits: number;
   onLaunch: () => void;
   onBack: () => void;
-  onCreateAbTest?: () => void;
+  onCreateAbTest?: (label?: string) => void;
 }
 
 // Simple mock workflows for selection
@@ -35,6 +37,9 @@ const MOCK_SCRIPTS = [
 const FinalizeCampaignStep: FC<FinalizeCampaignStepProps> = ({ estimatedCredits, onLaunch, onBack, onCreateAbTest }) => {
   const { campaignName, setCampaignName, selectedAgentId, setSelectedAgentId, availableAgents } =
     useCampaignCreationStore();
+
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [variantLabel, setVariantLabel] = useState("Variant B");
 
   const form: UseFormReturn<FinalizeCampaignForm> = useForm<FinalizeCampaignForm>({
     resolver: zodResolver(finalizeCampaignSchema),
@@ -193,20 +198,51 @@ const FinalizeCampaignStep: FC<FinalizeCampaignStepProps> = ({ estimatedCredits,
             Launch Campaign
           </Button>
           {onCreateAbTest && (
-            <Button
-              type="button"
-              className="w-full"
-              variant="secondary"
-              onClick={() => {
-                // Keep current form values synced to the store, then trigger A/B creation
-                const values = form.getValues();
-                setCampaignName(values.campaignName);
-                setSelectedAgentId(values.selectedAgentId ?? null);
-                onCreateAbTest();
-              }}
-            >
-              Create A/B Test
-            </Button>
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  className="w-full"
+                  variant="secondary"
+                  onClick={() => {
+                    // Sync current values before opening
+                    const values = form.getValues();
+                    setCampaignName(values.campaignName);
+                    setSelectedAgentId(values.selectedAgentId ?? null);
+                    setPopoverOpen(true);
+                  }}
+                >
+                  Create A/B Test
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72" side="top" sideOffset={8}>
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Name this variation</label>
+                    <Input
+                      value={variantLabel}
+                      onChange={(e) => setVariantLabel(e.target.value)}
+                      placeholder="Variant name"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="ghost" onClick={() => setPopoverOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        onCreateAbTest(variantLabel.trim() || "Variant B");
+                        setPopoverOpen(false);
+                      }}
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           )}
           <Button onClick={onBack} className="w-full" variant="outline" type="button">
             Back
