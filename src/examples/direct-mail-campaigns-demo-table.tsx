@@ -34,6 +34,9 @@ export default function DirectMailCampaignsDemoTable({
   const [createOpen, setCreateOpen] = React.useState(false);
   const campaignType = "Direct Mail" as const;
   const [dateChip, setDateChip] = React.useState<"today" | "7d" | "30d">("today");
+  // Toolbar filters
+  const [statusFilter, setStatusFilter] = React.useState<"all" | "scheduled" | "active" | "completed" | "canceled">("all");
+  const [dncFilter, setDncFilter] = React.useState<"all" | "only" | "hide">("all");
   // Per-row feedback (by id or name)
   const [feedback, setFeedback] = React.useState<Record<string, { sentiment: "up" | "down" | null; note: string }>>({});
   const getKey = React.useCallback((r: DirectMailCampaign) => (r as any)?.id ?? (r as any)?.name, []);
@@ -43,7 +46,26 @@ export default function DirectMailCampaignsDemoTable({
   }, []);
   const columns = React.useMemo(() => buildDirectMailColumns(), []);
 
-  const filtered = React.useMemo(() => filterCampaigns(data, query), [data, query]);
+  const filtered = React.useMemo(() => {
+    const base = filterCampaigns(data, query);
+    const byStatus = base.filter((r) => {
+      if (statusFilter === "all") return true;
+      const s = String((r as any).status ?? "").toLowerCase();
+      if (statusFilter === "scheduled") return s === "queued" || s === "pending";
+      if (statusFilter === "active") return ["delivering", "delivered", "read", "unread", "paused"].includes(s);
+      if (statusFilter === "completed") return s === "completed";
+      if (statusFilter === "canceled") return s === "failed" || s === "missed";
+      return true;
+    });
+    const byDnc = byStatus.filter((r) => {
+      const d = Number((r as any).dnc ?? 0);
+      if (dncFilter === "all") return true;
+      if (dncFilter === "only") return d > 0;
+      if (dncFilter === "hide") return d === 0;
+      return true;
+    });
+    return byDnc;
+  }, [data, query, statusFilter, dncFilter]);
 
   const pageSize = 10;
   const { table } = useDataTable<DirectMailCampaign>({
@@ -253,6 +275,20 @@ export default function DirectMailCampaignsDemoTable({
             onChange={(e) => setQuery(e.target.value)}
             className="h-8 w-64"
           />
+          {/* Status chips */}
+          <div className="hidden md:flex items-center gap-1">
+            <Button type="button" size="sm" variant={statusFilter === "all" ? "secondary" : "outline"} onClick={() => setStatusFilter("all")}>All</Button>
+            <Button type="button" size="sm" variant={statusFilter === "scheduled" ? "secondary" : "outline"} onClick={() => setStatusFilter("scheduled")}>Scheduled</Button>
+            <Button type="button" size="sm" variant={statusFilter === "active" ? "secondary" : "outline"} onClick={() => setStatusFilter("active")}>Active</Button>
+            <Button type="button" size="sm" variant={statusFilter === "completed" ? "secondary" : "outline"} onClick={() => setStatusFilter("completed")}>Completed</Button>
+            <Button type="button" size="sm" variant={statusFilter === "canceled" ? "secondary" : "outline"} onClick={() => setStatusFilter("canceled")}>Canceled</Button>
+          </div>
+          {/* DNC chips */}
+          <div className="hidden md:flex items-center gap-1">
+            <Button type="button" size="sm" variant={dncFilter === "all" ? "secondary" : "outline"} onClick={() => setDncFilter("all")}>DNC: All</Button>
+            <Button type="button" size="sm" variant={dncFilter === "only" ? "secondary" : "outline"} onClick={() => setDncFilter("only")}>DNC: Only</Button>
+            <Button type="button" size="sm" variant={dncFilter === "hide" ? "secondary" : "outline"} onClick={() => setDncFilter("hide")}>DNC: Hide</Button>
+          </div>
           <AIMenu
             selectedCount={table.getFilteredSelectedRowModel().rows.length}
             allCount={table.getFilteredRowModel().rows.length}

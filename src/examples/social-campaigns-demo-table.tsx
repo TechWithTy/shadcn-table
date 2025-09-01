@@ -5,6 +5,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 
 import { DataTable } from "../components/data-table/data-table";
 import { DataTableToolbar } from "../components/data-table/data-table-toolbar";
+import { DataTableExportButton } from "../components/data-table/data-table-export-button";
 import { Input } from "../components/ui/input";
 import { useDataTable } from "../hooks/use-data-table";
 import { useRowCarousel } from "../hooks/use-row-carousel";
@@ -34,6 +35,9 @@ export default function SocialCampaignsDemoTable({
   const [createOpen, setCreateOpen] = React.useState(false);
   const campaignType = "Social" as const;
   const [dateChip, setDateChip] = React.useState<DateChip>("today");
+  // Toolbar filters
+  const [statusFilter, setStatusFilter] = React.useState<"all" | "scheduled" | "active" | "completed" | "canceled">("all");
+  const [dncFilter, setDncFilter] = React.useState<"all" | "only" | "hide">("all");
   // Per-row feedback (by id or name)
   const [feedback, setFeedback] = React.useState<Record<string, { sentiment: "up" | "down" | null; note: string }>>({});
   const getKey = React.useCallback((r: CallCampaign) => (r as any)?.id ?? r.name, []);
@@ -45,15 +49,37 @@ export default function SocialCampaignsDemoTable({
   const columns = React.useMemo<ColumnDef<CallCampaign>[]>(() => buildSocialColumns(), []);
 
   const filtered = React.useMemo(() => {
-    if (!query.trim()) return data;
-    const q = query.toLowerCase();
-    return data.filter((r) =>
-      [r.name, r.status, String(r.calls), String(r.leads), String(r.inQueue)]
-        .filter(Boolean)
-        .map((v) => String(v).toLowerCase())
-        .some((s) => s.includes(q)),
-    );
-  }, [data, query]);
+    const base = (() => {
+      if (!query.trim()) return data;
+      const q = query.toLowerCase();
+      return data.filter((r) =>
+        [r.name, r.status, String(r.calls), String(r.leads), String(r.inQueue)]
+          .filter(Boolean)
+          .map((v) => String(v).toLowerCase())
+          .some((s) => s.includes(q)),
+      );
+    })();
+
+    const byStatus = base.filter((r) => {
+      if (statusFilter === "all") return true;
+      const s = String(r.status ?? "").toLowerCase();
+      if (statusFilter === "scheduled") return s === "queued" || s === "pending";
+      if (statusFilter === "active") return ["delivering", "delivered", "read", "unread", "paused"].includes(s);
+      if (statusFilter === "completed") return s === "completed";
+      if (statusFilter === "canceled") return s === "failed" || s === "missed"; // heuristic mapping
+      return true;
+    });
+
+    const byDnc = byStatus.filter((r) => {
+      const d = Number((r as any).dnc ?? 0);
+      if (dncFilter === "all") return true;
+      if (dncFilter === "only") return d > 0;
+      if (dncFilter === "hide") return d === 0;
+      return true;
+    });
+
+    return byDnc;
+  }, [data, query, statusFilter, dncFilter]);
 
   const pageSize = 10;
   const { table } = useDataTable<CallCampaign>({
@@ -182,6 +208,20 @@ export default function SocialCampaignsDemoTable({
             onChange={(e) => setQuery(e.target.value)}
             className="h-8 w-64"
           />
+          {/* Status chips */}
+          <div className="hidden md:flex items-center gap-1">
+            <Button type="button" size="sm" variant={statusFilter === "all" ? "secondary" : "outline"} onClick={() => setStatusFilter("all")}>All</Button>
+            <Button type="button" size="sm" variant={statusFilter === "scheduled" ? "secondary" : "outline"} onClick={() => setStatusFilter("scheduled")}>Scheduled</Button>
+            <Button type="button" size="sm" variant={statusFilter === "active" ? "secondary" : "outline"} onClick={() => setStatusFilter("active")}>Active</Button>
+            <Button type="button" size="sm" variant={statusFilter === "completed" ? "secondary" : "outline"} onClick={() => setStatusFilter("completed")}>Completed</Button>
+            <Button type="button" size="sm" variant={statusFilter === "canceled" ? "secondary" : "outline"} onClick={() => setStatusFilter("canceled")}>Canceled</Button>
+          </div>
+          {/* DNC chips */}
+          <div className="hidden md:flex items-center gap-1">
+            <Button type="button" size="sm" variant={dncFilter === "all" ? "secondary" : "outline"} onClick={() => setDncFilter("all")}>DNC: All</Button>
+            <Button type="button" size="sm" variant={dncFilter === "only" ? "secondary" : "outline"} onClick={() => setDncFilter("only")}>DNC: Only</Button>
+            <Button type="button" size="sm" variant={dncFilter === "hide" ? "secondary" : "outline"} onClick={() => setDncFilter("hide")}>DNC: Hide</Button>
+          </div>
           <ActionBar
             table={table}
             getSelectedRows={getSelectedRows}
@@ -190,6 +230,9 @@ export default function SocialCampaignsDemoTable({
             setAiOpen={setAiOpen}
           />
         </DataTableToolbar>
+        <div className="-mt-3 mb-3 md:mb-4">
+          <DataTableExportButton table={table} filename="social-campaigns" excludeColumns={["select"]} />
+        </div>
       </DataTable>
 
       <AIDialog open={aiOpen} onOpenChange={setAiOpen} rows={aiRows} summarize={summarizeRows} />

@@ -40,6 +40,9 @@ export default function TextCampaignsDemoTable({
   const [createOpen, setCreateOpen] = React.useState(false);
   const campaignType = "Text" as const;
   const [dateChip, setDateChip] = React.useState<"today" | "7d" | "30d">("today");
+  // Toolbar filters
+  const [statusFilter, setStatusFilter] = React.useState<"all" | "scheduled" | "active" | "completed" | "canceled">("all");
+  const [dncFilter, setDncFilter] = React.useState<"all" | "only" | "hide">("all");
   // Per-row feedback for completed campaigns
   const [feedback, setFeedback] = React.useState<Record<string, { sentiment: "up" | "down" | null; note: string }>>({});
 
@@ -66,15 +69,37 @@ export default function TextCampaignsDemoTable({
   const columns = React.useMemo(() => buildTextCampaignColumns(), []);
 
   const filtered = React.useMemo(() => {
-    if (!query.trim()) return data;
-    const q = query.toLowerCase();
-    return data.filter((r) =>
-      [r.name, r.status, String(r.calls), String(r.leads), String(r.inQueue)]
-        .filter(Boolean)
-        .map((v) => String(v).toLowerCase())
-        .some((s) => s.includes(q)),
-    );
-  }, [data, query]);
+    const base = (() => {
+      if (!query.trim()) return data;
+      const q = query.toLowerCase();
+      return data.filter((r) =>
+        [r.name, r.status, String(r.calls), String(r.leads), String(r.inQueue)]
+          .filter(Boolean)
+          .map((v) => String(v).toLowerCase())
+          .some((s) => s.includes(q)),
+      );
+    })();
+
+    const byStatus = base.filter((r) => {
+      if (statusFilter === "all") return true;
+      const s = String(r.status ?? "").toLowerCase();
+      if (statusFilter === "scheduled") return s === "queued" || s === "pending";
+      if (statusFilter === "active") return ["delivering", "delivered", "read", "unread", "paused"].includes(s);
+      if (statusFilter === "completed") return s === "completed";
+      if (statusFilter === "canceled") return s === "failed" || s === "missed"; // heuristic mapping
+      return true;
+    });
+
+    const byDnc = byStatus.filter((r) => {
+      const d = Number((r as any).dnc ?? 0);
+      if (dncFilter === "all") return true;
+      if (dncFilter === "only") return d > 0;
+      if (dncFilter === "hide") return d === 0;
+      return true;
+    });
+
+    return byDnc;
+  }, [data, query, statusFilter, dncFilter]);
 
   const pageSize = 10;
   const { table } = useDataTable<CallCampaign>({
@@ -207,6 +232,10 @@ export default function TextCampaignsDemoTable({
             setAiOpen(true);
           }}
           filename="text-campaigns"
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          dncFilter={dncFilter}
+          setDncFilter={setDncFilter}
         />
       </DataTable>
 
