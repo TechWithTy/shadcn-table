@@ -34,6 +34,9 @@ export default function DirectMailCampaignsDemoTable({
   const [createOpen, setCreateOpen] = React.useState(false);
   const campaignType = "Direct Mail" as const;
   const [dateChip, setDateChip] = React.useState<"today" | "7d" | "30d">("today");
+  // Per-row feedback (by id or name)
+  const [feedback, setFeedback] = React.useState<Record<string, { sentiment: "up" | "down" | null; note: string }>>({});
+  const getKey = React.useCallback((r: DirectMailCampaign) => (r as any)?.id ?? (r as any)?.name, []);
 
   React.useEffect(() => {
     setData(generateDirectMailCampaignData());
@@ -49,8 +52,21 @@ export default function DirectMailCampaignsDemoTable({
     pageCount: Math.max(1, Math.ceil(filtered.length / pageSize)),
     initialState: {
       pagination: { pageIndex: 0, pageSize },
+      // Important: "select" must always be the first column (pinned). "feedback" should come immediately after but NOT be pinned/sticky.
       columnPinning: { left: ["select"], right: [] },
-      columnOrder: ["select", "name", "calls", "inQueue", "leads", "status", "transfer", "transfers", "startDate"],
+      columnOrder: [
+        "select",
+        "feedback",
+        "controls",
+        "name",
+        "calls",
+        "inQueue",
+        "leads",
+        "status",
+        "transfer",
+        "transfers",
+        "startDate",
+      ],
       columnVisibility: {
         calls: false,
         inQueue: false,
@@ -119,6 +135,37 @@ export default function DirectMailCampaignsDemoTable({
       },
     },
     enableColumnPinning: true,
+    // Controls + Feedback used by Direct Mail columns
+    meta: {
+      onPause: (row: DirectMailCampaign) => {
+        const key = getKey(row);
+        setData((prev) => prev.map((r) => (getKey(r) === key ? { ...r, status: "paused" } : r)));
+      },
+      onResume: (row: DirectMailCampaign) => {
+        const key = getKey(row);
+        setData((prev) => prev.map((r) => (getKey(r) === key ? { ...r, status: "queued" } : r)));
+      },
+      onStop: (row: DirectMailCampaign) => {
+        const key = getKey(row);
+        setData((prev) => prev.map((r) => (getKey(r) === key ? { ...r, status: "completed" } : r)));
+      },
+      getFeedback: (row: DirectMailCampaign) => feedback[getKey(row)],
+      onToggleFeedback: (row: DirectMailCampaign, s: "up" | "down") => {
+        const key = getKey(row);
+        setFeedback((prev) => {
+          const cur = prev[key] ?? { sentiment: null, note: "" };
+          const nextSentiment = cur.sentiment === s ? null : s;
+          return { ...prev, [key]: { ...cur, sentiment: nextSentiment } };
+        });
+      },
+      onFeedbackNoteChange: (row: DirectMailCampaign, note: string) => {
+        const key = getKey(row);
+        setFeedback((prev) => {
+          const cur = prev[key] ?? { sentiment: null, note: "" };
+          return { ...prev, [key]: { ...cur, note } };
+        });
+      },
+    },
   });
 
   const carousel = useRowCarousel(table, { loop: true });

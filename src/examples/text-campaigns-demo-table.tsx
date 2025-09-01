@@ -40,6 +40,8 @@ export default function TextCampaignsDemoTable({
   const [createOpen, setCreateOpen] = React.useState(false);
   const campaignType = "Text" as const;
   const [dateChip, setDateChip] = React.useState<"today" | "7d" | "30d">("today");
+  // Per-row feedback for completed campaigns
+  const [feedback, setFeedback] = React.useState<Record<string, { sentiment: "up" | "down" | null; note: string }>>({});
 
   React.useEffect(() => {
     const d = (mockCallCampaignData as CallCampaign[] | false) || generateCallCampaignData();
@@ -81,9 +83,12 @@ export default function TextCampaignsDemoTable({
     pageCount: Math.max(1, Math.ceil(filtered.length / pageSize)),
     initialState: {
       pagination: { pageIndex: 0, pageSize },
+      // Important: "select" must always be the first column (pinned). "feedback" should come immediately after but NOT be pinned/sticky.
       columnPinning: { left: ["select"], right: [] },
       columnOrder: [
         "select",
+        "feedback",
+        "controls",
         "name",
         "device",
         "status",
@@ -99,6 +104,33 @@ export default function TextCampaignsDemoTable({
       ],
     },
     enableColumnPinning: true,
+    meta: {
+      onPause: (row: CallCampaign) => {
+        setData((prev) => prev.map((r) => (r.name === row.name ? { ...r, status: "paused" } : r)));
+      },
+      onResume: (row: CallCampaign) => {
+        setData((prev) => prev.map((r) => (r.name === row.name ? { ...r, status: "queued" } : r)));
+      },
+      onStop: (row: CallCampaign) => {
+        setData((prev) => prev.map((r) => (r.name === row.name ? { ...r, status: "completed" } : r)));
+      },
+      getFeedback: (row: CallCampaign) => feedback[row.name],
+      onToggleFeedback: (row: CallCampaign, s: "up" | "down") => {
+        const key = row.name;
+        setFeedback((prev) => {
+          const cur = prev[key] ?? { sentiment: null, note: "" };
+          const nextSentiment = cur.sentiment === s ? null : s;
+          return { ...prev, [key]: { ...cur, sentiment: nextSentiment } };
+        });
+      },
+      onFeedbackNoteChange: (row: CallCampaign, note: string) => {
+        const key = row.name;
+        setFeedback((prev) => {
+          const cur = prev[key] ?? { sentiment: null, note: "" };
+          return { ...prev, [key]: { ...cur, note } };
+        });
+      },
+    },
   });
 
   const carousel = useRowCarousel(table, { loop: true });

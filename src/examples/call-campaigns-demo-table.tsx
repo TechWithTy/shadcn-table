@@ -42,6 +42,8 @@ export default function CallCampaignsDemoTable({
   // In-memory DNC list keyed by campaign id or name for demo purposes
   const [dncSet, setDncSet] = React.useState<Set<string>>(new Set());
   const [dncFilter, setDncFilter] = React.useState<"all" | "only" | "hide">("all");
+  // Per-row feedback store: sentiment and optional note
+  const [feedback, setFeedback] = React.useState<Record<string, { sentiment: "up" | "down" | null; note: string }>>({});
 
   const getKey = React.useCallback((r: CallCampaign) => (r as unknown as { id?: string }).id ?? r.name, []);
 
@@ -84,6 +86,8 @@ export default function CallCampaignsDemoTable({
       columnPinning: { left: ["select"], right: [] },
       columnOrder: [
         "select",
+        "controls",
+        "feedback",
         "name",
         // default order for Calls; will be updated via effect for other types
         "calls",
@@ -97,6 +101,49 @@ export default function CallCampaignsDemoTable({
       ],
     },
     enableColumnPinning: true,
+    // Expose per-row control handlers via table meta for the Controls column
+    meta: {
+      onPause: (row: CallCampaign) => {
+        const key = getKey(row);
+        setData((prev) =>
+          prev.map((r) => (getKey(r) === key ? { ...r, status: "paused" } : r)),
+        );
+      },
+      onResume: (row: CallCampaign) => {
+        const key = getKey(row);
+        // Resume to queued for demo purposes
+        setData((prev) =>
+          prev.map((r) => (getKey(r) === key ? { ...r, status: "queued" } : r)),
+        );
+      },
+      onStop: (row: CallCampaign) => {
+        const key = getKey(row);
+        // Mark as completed for demo purposes
+        setData((prev) =>
+          prev.map((r) => (getKey(r) === key ? { ...r, status: "completed" } : r)),
+        );
+      },
+      // Feedback helpers used by the Feedback column
+      getFeedback: (row: CallCampaign) => {
+        const key = getKey(row);
+        return feedback[key];
+      },
+      onToggleFeedback: (row: CallCampaign, s: "up" | "down") => {
+        const key = getKey(row);
+        setFeedback((prev) => {
+          const cur = prev[key] ?? { sentiment: null, note: "" };
+          const nextSentiment = cur.sentiment === s ? null : s;
+          return { ...prev, [key]: { ...cur, sentiment: nextSentiment } };
+        });
+      },
+      onFeedbackNoteChange: (row: CallCampaign, note: string) => {
+        const key = getKey(row);
+        setFeedback((prev) => {
+          const cur = prev[key] ?? { sentiment: null, note: "" };
+          return { ...prev, [key]: { ...cur, note } };
+        });
+      },
+    },
   });
 
   // Ensure playback is NOT pinned; if any state re-adds it, remove it.
@@ -126,6 +173,8 @@ export default function CallCampaignsDemoTable({
     ];
     const callsOrder = [
       "select",
+      "controls",
+      "feedback",
       "name",
       "calls",
       "inQueue",

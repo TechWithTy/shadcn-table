@@ -681,8 +681,14 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     const timingCol = hasTiming ? undefined : buildGlobalTimingPrefsColumn<TData>();
 
     let out = providedColumns.slice();
+    const controlsIdx = out.findIndex((c) => c.id === "controls");
     const selectIdx = out.findIndex((c) => c.id === "select");
-    let insertBaseIdx = selectIdx >= 0 ? selectIdx + 1 : 0;
+    let insertBaseIdx =
+      controlsIdx >= 0
+        ? controlsIdx + 1
+        : selectIdx >= 0
+          ? selectIdx + 1
+          : 0;
 
     if (dncCol) {
       out.splice(insertBaseIdx, 0, dncCol);
@@ -835,8 +841,9 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
       if (!order.includes(id)) order.splice(at, 0, id);
       return order.indexOf(id) + 1;
     };
+    const controlsIdx = order.indexOf("controls");
     const selectIdx = order.indexOf("select");
-    let insertAt = selectIdx >= 0 ? selectIdx + 1 : 0;
+    let insertAt = controlsIdx >= 0 ? controlsIdx + 1 : selectIdx >= 0 ? selectIdx + 1 : 0;
 
     if (!has) {
       order.splice(insertAt, 0, "globalDnc");

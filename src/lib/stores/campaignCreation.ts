@@ -74,6 +74,8 @@ export interface CampaignCreationState {
 	setReachOnWeekend: (v: boolean) => void;
 	reachOnHolidays: boolean;
 	setReachOnHolidays: (v: boolean) => void;
+	countVoicemailAsAnswered: boolean;
+	setCountVoicemailAsAnswered: (v: boolean) => void;
 
 	// Number Pooling (Calls/Text)
 	numberPoolingEnabled: boolean;
@@ -145,6 +147,8 @@ export const useCampaignCreationStore = create<CampaignCreationState>((set) => (
 	setReachOnWeekend: (reachOnWeekend) => set({ reachOnWeekend }),
 	reachOnHolidays: false,
 	setReachOnHolidays: (reachOnHolidays) => set({ reachOnHolidays }),
+	countVoicemailAsAnswered: false,
+	setCountVoicemailAsAnswered: (countVoicemailAsAnswered) => set({ countVoicemailAsAnswered }),
 
 	// Number Pooling (Calls/Text)
 	numberPoolingEnabled: false,

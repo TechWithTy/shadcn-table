@@ -15,6 +15,7 @@ interface FinalizeCampaignStepProps {
   estimatedCredits: number;
   onLaunch: () => void;
   onBack: () => void;
+  onCreateAbTest?: () => void;
 }
 
 // Simple mock workflows for selection
@@ -31,7 +32,7 @@ const MOCK_SCRIPTS = [
   { id: "ss3", name: "Appraisal Follow-up Script" },
 ];
 
-const FinalizeCampaignStep: FC<FinalizeCampaignStepProps> = ({ estimatedCredits, onLaunch, onBack }) => {
+const FinalizeCampaignStep: FC<FinalizeCampaignStepProps> = ({ estimatedCredits, onLaunch, onBack, onCreateAbTest }) => {
   const { campaignName, setCampaignName, selectedAgentId, setSelectedAgentId, availableAgents } =
     useCampaignCreationStore();
 
@@ -191,6 +192,22 @@ const FinalizeCampaignStep: FC<FinalizeCampaignStepProps> = ({ estimatedCredits,
           <Button type="submit" className="w-full" disabled={!form.formState.isValid}>
             Launch Campaign
           </Button>
+          {onCreateAbTest && (
+            <Button
+              type="button"
+              className="w-full"
+              variant="secondary"
+              onClick={() => {
+                // Keep current form values synced to the store, then trigger A/B creation
+                const values = form.getValues();
+                setCampaignName(values.campaignName);
+                setSelectedAgentId(values.selectedAgentId ?? null);
+                onCreateAbTest();
+              }}
+            >
+              Create A/B Test
+            </Button>
+          )}
           <Button onClick={onBack} className="w-full" variant="outline" type="button">
             Back
           </Button>

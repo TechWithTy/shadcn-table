@@ -8,6 +8,10 @@ import { Badge } from "../../../../components/ui/badge";
 import type { CallCampaign } from "../../../../../../../types/_dashboard/campaign";
 import { PlaybackCell } from "../components/PlaybackCell";
 import { getTextMetric, getLastMessageAt, downloadCampaignZip } from "../../text/utils/helpers";
+import { Pause, Play, Square, ThumbsDown, ThumbsUp } from "lucide-react";
+import { stopRowClick, withStopPropagation } from "../../../../utils/events";
+import { Popover, PopoverContent, PopoverTrigger } from "../../../../components/ui/popover";
+import { Input } from "../../../../components/ui/input";
 
 export type CampaignType = "Calls" | "Text" | "Social" | "Direct Mail";
 
@@ -61,6 +65,126 @@ export function buildCallCampaignColumns(
       enableSorting: false,
       enableHiding: false,
       size: 48,
+    },
+    {
+      id: "controls",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Controls" />
+      ),
+      cell: ({ row, table }) => {
+        const status = String((row.original as any).status ?? "");
+        const isActive = ["queued", "delivering", "pending"].includes(status);
+        const isPaused = status === "paused";
+        const canControl = isActive || isPaused;
+        const meta = ((table.options as any)?.meta ?? {}) as {
+          onPause?: (r: any) => void;
+          onResume?: (r: any) => void;
+          onStop?: (r: any) => void;
+        };
+        return (
+          <div className="flex items-center gap-2" onClick={stopRowClick}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              aria-label={isPaused ? "Resume" : "Pause"}
+              disabled={!canControl}
+              onClick={withStopPropagation(() => {
+                if (!canControl) return;
+                if (isPaused) meta.onResume?.(row.original);
+                else meta.onPause?.(row.original);
+              })}
+            >
+              {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              aria-label="Stop"
+              disabled={!canControl}
+              onClick={withStopPropagation(() => {
+                if (!canControl) return;
+                meta.onStop?.(row.original);
+              })}
+            >
+              <Square className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      },
+      enableSorting: false,
+      enableHiding: false,
+      size: 220,
+    },
+    {
+      id: "feedback",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Feedback" />
+      ),
+      cell: ({ row, table }) => {
+        const r = row.original as any;
+        const status = String(r.status ?? "");
+        if (status !== "completed") return <span className="text-muted-foreground">—</span>;
+        const meta = ((table.options as any)?.meta ?? {}) as {
+          getFeedback?: (r: any) => { sentiment: "up" | "down" | null; note: string } | undefined;
+          onToggleFeedback?: (r: any, s: "up" | "down") => void;
+          onFeedbackNoteChange?: (r: any, note: string) => void;
+        };
+        const fb = meta.getFeedback?.(r) ?? { sentiment: null, note: "" };
+        const name = String(r.name ?? "this");
+        const upActive = fb.sentiment === "up";
+        const downActive = fb.sentiment === "down";
+        return (
+          <div className="flex items-center gap-2" onClick={stopRowClick}>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  aria-label="Thumbs up"
+                  className={upActive ? "text-green-600 border-green-500" : ""}
+                  onClick={withStopPropagation(() => meta.onToggleFeedback?.(r, "up"))}
+                >
+                  <ThumbsUp className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-64" onClick={stopRowClick}>
+                <Input
+                  placeholder={`Why did you ${upActive ? "like" : "like"} \"${name}\"?`}
+                  value={fb.note}
+                  onChange={(e) => meta.onFeedbackNoteChange?.(r, e.target.value)}
+                />
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  aria-label="Thumbs down"
+                  className={downActive ? "text-red-600 border-red-500" : ""}
+                  onClick={withStopPropagation(() => meta.onToggleFeedback?.(r, "down"))}
+                >
+                  <ThumbsDown className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-64" onClick={stopRowClick}>
+                <Input
+                  placeholder={`Why did you ${downActive ? "dislike" : "dislike"} \"${name}\"?`}
+                  value={fb.note}
+                  onChange={(e) => meta.onFeedbackNoteChange?.(r, e.target.value)}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        );
+      },
+      enableSorting: false,
+      enableHiding: false,
+      size: 170,
     },
     {
       accessorKey: "name",
@@ -346,6 +470,7 @@ export function buildCallCampaignColumns(
           { label: "Delivered", value: "delivered" },
           { label: "Pending", value: "pending" },
           { label: "Queued", value: "queued" },
+          { label: "Paused", value: "paused" },
           { label: "Read", value: "read" },
           { label: "Unread", value: "unread" },
         ],
@@ -762,7 +887,9 @@ export function buildCallCampaignColumns(
         <DataTableColumnHeader column={column} title="Playback" />
       ),
       cell: ({ row }) => (
-        <PlaybackCell callInformation={row.original.callInformation ?? []} />
+        <div onClick={stopRowClick}>
+          <PlaybackCell callInformation={row.original.callInformation ?? []} />
+        </div>
       ),
       enableSorting: false,
       enableHiding: false,

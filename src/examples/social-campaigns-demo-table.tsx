@@ -34,6 +34,9 @@ export default function SocialCampaignsDemoTable({
   const [createOpen, setCreateOpen] = React.useState(false);
   const campaignType = "Social" as const;
   const [dateChip, setDateChip] = React.useState<DateChip>("today");
+  // Per-row feedback (by id or name)
+  const [feedback, setFeedback] = React.useState<Record<string, { sentiment: "up" | "down" | null; note: string }>>({});
+  const getKey = React.useCallback((r: CallCampaign) => (r as any)?.id ?? r.name, []);
 
   React.useEffect(() => {
     setData(generateSocialCampaignData());
@@ -59,9 +62,12 @@ export default function SocialCampaignsDemoTable({
     pageCount: Math.max(1, Math.ceil(filtered.length / pageSize)),
     initialState: {
       pagination: { pageIndex: 0, pageSize },
+      // Important: "select" must always be the first column (pinned). "feedback" should come immediately after but NOT be pinned/sticky.
       columnPinning: { left: ["select"], right: [] },
       columnOrder: [
         "select",
+        "feedback",
+        "controls",
         "platform",
         "name",
         "flowTemplate",
@@ -86,6 +92,37 @@ export default function SocialCampaignsDemoTable({
       },
     },
     enableColumnPinning: true,
+    // Controls + Feedback used by Social columns
+    meta: {
+      onPause: (row: CallCampaign) => {
+        const key = getKey(row);
+        setData((prev) => prev.map((r) => (getKey(r) === key ? { ...r, status: "paused" } : r)));
+      },
+      onResume: (row: CallCampaign) => {
+        const key = getKey(row);
+        setData((prev) => prev.map((r) => (getKey(r) === key ? { ...r, status: "queued" } : r)));
+      },
+      onStop: (row: CallCampaign) => {
+        const key = getKey(row);
+        setData((prev) => prev.map((r) => (getKey(r) === key ? { ...r, status: "completed" } : r)));
+      },
+      getFeedback: (row: CallCampaign) => feedback[getKey(row)],
+      onToggleFeedback: (row: CallCampaign, s: "up" | "down") => {
+        const key = getKey(row);
+        setFeedback((prev) => {
+          const cur = prev[key] ?? { sentiment: null, note: "" };
+          const nextSentiment = cur.sentiment === s ? null : s;
+          return { ...prev, [key]: { ...cur, sentiment: nextSentiment } };
+        });
+      },
+      onFeedbackNoteChange: (row: CallCampaign, note: string) => {
+        const key = getKey(row);
+        setFeedback((prev) => {
+          const cur = prev[key] ?? { sentiment: null, note: "" };
+          return { ...prev, [key]: { ...cur, note } };
+        });
+      },
+    },
   });
 
   const carousel = useRowCarousel(table, { loop: true });

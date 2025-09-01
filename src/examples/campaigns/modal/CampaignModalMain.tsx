@@ -40,6 +40,11 @@ export default function CampaignModalMain({
     primaryChannel,
     setPrimaryChannel,
     reset,
+    // A/B testing and naming
+    abTestingEnabled,
+    setAbTestingEnabled,
+    campaignName,
+    setCampaignName,
   } = useCampaignCreationStore();
 
   const days = startDate && endDate
@@ -95,6 +100,17 @@ export default function CampaignModalMain({
     closeModal();
   };
 
+  const handleCreateAbTest = () => {
+    // Enable A/B testing and duplicate current campaign setup.
+    // Keep dialog open and restart at step 0 with all data preserved in the store.
+    setAbTestingEnabled(true);
+    // Optional: suffix to distinguish variant name for quick edits
+    if (campaignName && !campaignName.toLowerCase().includes("variant b")) {
+      setCampaignName(`${campaignName} (Variant B)`);
+    }
+    setStep(0);
+  };
+
   // Reset step and relevant store-derived form values when the dialog opens/closes
   useEffect(() => {
     if (open) {
@@ -147,7 +163,12 @@ export default function CampaignModalMain({
             </p>
           )}
           {step === 3 && (
-            <FinalizeCampaignStep onBack={prevStep} onLaunch={launchCampaign} estimatedCredits={estimatedCredits} />
+            <FinalizeCampaignStep
+              onBack={prevStep}
+              onLaunch={launchCampaign}
+              onCreateAbTest={handleCreateAbTest}
+              estimatedCredits={estimatedCredits}
+            />
           )}
         </div>
       </DialogContent>

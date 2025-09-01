@@ -129,6 +129,12 @@ const ChannelCustomizationStep: FC<ChannelCustomizationStepProps> = ({ onNext, o
     selectedLeadListId,
     setSelectedLeadListId,
     setLeadCount,
+    // A/B testing fields
+    abTestingEnabled,
+    selectedLeadListAId,
+    setSelectedLeadListAId,
+    selectedLeadListBId,
+    setSelectedLeadListBId,
     availableAgents,
     setSelectedAgentId,
     // Number pooling store fields
@@ -156,6 +162,10 @@ const ChannelCustomizationStep: FC<ChannelCustomizationStepProps> = ({ onNext, o
   const watchedDirectMailType = form.watch("directMailType");
   const watchedPrimaryChannel = primaryChannel;
   const poolingEnabled = form.watch("numberPoolingEnabled");
+
+  // Track counts for A/B lists to compute total leads
+  const [leadCountA, setLeadCountA] = useState<number>(0);
+  const [leadCountB, setLeadCountB] = useState<number>(0);
 
   const [poolingExpanded, setPoolingExpanded] = useState(false);
   const [loadingNumbers, setLoadingNumbers] = useState(false);
@@ -662,12 +672,28 @@ const ChannelCustomizationStep: FC<ChannelCustomizationStepProps> = ({ onNext, o
               <FormItem>
                 <FormControl>
                   <LeadListSelector
-                    value={field.value || ""}
+                    value={abTestingEnabled ? (selectedLeadListAId || "") : (field.value || "")}
                     onChange={(selectedValue: string, recordCount: number) => {
-                      field.onChange(selectedValue);
-                      setSelectedLeadListId(selectedValue);
-                      setLeadCount(recordCount);
+                      if (abTestingEnabled) {
+                        setSelectedLeadListAId(selectedValue);
+                        setLeadCountA(recordCount);
+                        setLeadCount(recordCount + leadCountB);
+                        // keep single-field form in sync with A for validation/back-compat
+                        field.onChange(selectedValue);
+                        setSelectedLeadListId(selectedValue);
+                      } else {
+                        field.onChange(selectedValue);
+                        setSelectedLeadListId(selectedValue);
+                        setLeadCount(recordCount);
+                      }
                     }}
+                    abTestingEnabled={abTestingEnabled}
+                    valueB={abTestingEnabled ? (selectedLeadListBId || "") : undefined}
+                    onChangeB={abTestingEnabled ? ((selectedValue: string, recordCount: number) => {
+                      setSelectedLeadListBId(selectedValue);
+                      setLeadCountB(recordCount);
+                      setLeadCount(leadCountA + recordCount);
+                    }) : undefined}
                   />
                 </FormControl>
                 <FormMessage />

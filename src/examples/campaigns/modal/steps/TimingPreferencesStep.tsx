@@ -33,6 +33,8 @@ export const TimingPreferencesStep: FC<TimingPreferencesStepProps> = ({ onNext, 
     setMinDailyAttempts,
     maxDailyAttempts,
     setMaxDailyAttempts,
+    countVoicemailAsAnswered,
+    setCountVoicemailAsAnswered,
   } = useCampaignCreationStore();
 
   // Initialize holidays for default country (US). Adjust if you add UI for country selection.
@@ -155,6 +157,14 @@ export const TimingPreferencesStep: FC<TimingPreferencesStepProps> = ({ onNext, 
               <p className="text-xs text-destructive">Max attempts must be greater than or equal to Min attempts.</p>
             )}
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="countVm"
+            checked={countVoicemailAsAnswered}
+            onCheckedChange={(v) => setCountVoicemailAsAnswered(!!v)}
+          />
+          <Label htmlFor="countVm">Count voicemail as answered</Label>
         </div>
         <h4 className="text-xs font-medium text-muted-foreground">Reach windows</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
