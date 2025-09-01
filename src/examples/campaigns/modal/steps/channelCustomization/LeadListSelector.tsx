@@ -12,9 +12,13 @@ interface LeadListSelectorProps {
   value: string;
   onChange: (value: string, recordCount: number) => void;
   disabled?: boolean;
+  // Optional A/B testing support
+  abTestingEnabled?: boolean;
+  valueB?: string;
+  onChangeB?: (value: string, recordCount: number) => void;
 }
 
-const LeadListSelector: FC<LeadListSelectorProps> = ({ value, onChange, disabled = false }) => {
+const LeadListSelector: FC<LeadListSelectorProps> = ({ value, onChange, disabled = false, abTestingEnabled = false, valueB = "", onChangeB }) => {
   const [items, setItems] = useState<LeadList[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -50,9 +54,17 @@ const LeadListSelector: FC<LeadListSelectorProps> = ({ value, onChange, disabled
     }
   };
 
+  const handleValueChangeB = (selectedValue: string) => {
+    if (!onChangeB) return;
+    const selectedItem = items.find((item) => item.id === selectedValue);
+    if (selectedItem) {
+      onChangeB(selectedValue, selectedItem.records);
+    }
+  };
+
   return (
     <FormItem>
-      <FormLabel>Select Lead List</FormLabel>
+      <FormLabel>{abTestingEnabled ? "Select Lead List A" : "Select Lead List"}</FormLabel>
       <Select disabled={disabled} onValueChange={handleValueChange} value={value} defaultValue={value}>
         <FormControl>
           <SelectTrigger>
@@ -77,6 +89,35 @@ const LeadListSelector: FC<LeadListSelectorProps> = ({ value, onChange, disabled
           ))}
         </SelectContent>
       </Select>
+
+      {abTestingEnabled && (
+        <div className="mt-4">
+          <FormLabel>Select Lead List B</FormLabel>
+          <Select disabled={disabled} onValueChange={handleValueChangeB} value={valueB} defaultValue={valueB}>
+            <FormControl>
+              <SelectTrigger>
+                <SelectValue placeholder="-- Select a second lead list --" />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent
+              position="popper"
+              side="bottom"
+              sideOffset={4}
+              avoidCollisions={false}
+              className="max-h-72 overflow-y-auto overscroll-contain"
+              onWheel={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              {items.map((list) => (
+                <SelectItem key={list.id} value={list.id}>
+                  {list.listName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <div className="mt-2 flex items-center gap-2">
         <Button type="button" size="sm" variant="outline" disabled={loading || !hasMore} onClick={() => void loadMoreLeadLists()}>
           {loading ? (
@@ -89,6 +130,9 @@ const LeadListSelector: FC<LeadListSelectorProps> = ({ value, onChange, disabled
         </Button>
       </div>
       <FormMessage />
+      {abTestingEnabled && (!value || !valueB) ? (
+        <div className="mt-2 text-xs text-destructive">A/B testing requires two lead lists.</div>
+      ) : null}
     </FormItem>
   );
 };
