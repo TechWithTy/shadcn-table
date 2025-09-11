@@ -30,7 +30,7 @@ export function DataTable<TData>({
   return (
     <div className={cn("flex w-full flex-col gap-2.5", className)} {...props}>
       {children}
-      <div className="overflow-auto rounded-md border">
+      <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -93,9 +93,7 @@ export function DataTable<TData>({
       </div>
       <div className="flex flex-col gap-2.5">
         <DataTablePagination table={table} />
-        {actionBar &&
-          table.getFilteredSelectedRowModel().rows.length > 0 &&
-          actionBar}
+        {actionBar}
       </div>
     </div>
   );

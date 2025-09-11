@@ -64,6 +64,18 @@ interface UseDataTableProps<TData>
   scroll?: boolean;
   shallow?: boolean;
   startTransition?: React.TransitionStartFunction;
+  // Allows consumers to opt-out of injected global columns or be selective
+  disableGlobalColumns?:
+    | boolean
+    | Partial<{
+        dnc: boolean;
+        dncSource: boolean;
+        script: boolean;
+        agent: boolean;
+        transfer: boolean;
+        goal: boolean;
+        timing: boolean;
+      }>;
 }
 
 // Global Script title column
@@ -577,6 +589,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     scroll = false,
     shallow = true,
     startTransition,
+    disableGlobalColumns,
     ...tableProps
   } = props;
 
@@ -641,8 +654,14 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     [pagination, setPage, setPerPage],
   );
 
-  // Augment columns with a global DNC column, unless caller already has one
+  // Augment columns with global columns unless disabled by consumer
   const columns = React.useMemo<ColumnDef<TData>[]>(() => {
+    const disableAll = disableGlobalColumns === true;
+    const disabled = (
+      (typeof disableGlobalColumns === "object" && disableGlobalColumns) ||
+      {}
+    ) as Record<string, boolean>;
+
     const hasDnc = (providedColumns ?? []).some(
       (c) => c.id === "globalDnc" || c.id === "dnc" || ("accessorKey" in (c as any) && (c as any).accessorKey === "dnc"),
     );
@@ -656,13 +675,13 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     const hasTiming = (providedColumns ?? []).some((c) => c.id === "globalTimingPrefs");
 
     // Always make sure DNC column exists; if user already has one, keep as-is but still consider injecting source next to it
-    const dncCol = hasDnc ? undefined : buildGlobalDncColumn<TData>();
-    const sourceCol = hasDncSource ? undefined : buildGlobalDncSourceColumn<TData>();
-    const scriptCol = hasScript ? undefined : buildGlobalScriptColumn<TData>();
-    const agentCol = hasAgent ? undefined : buildGlobalAgentColumn<TData>();
+    const dncCol = disableAll || disabled.dnc ? undefined : hasDnc ? undefined : buildGlobalDncColumn<TData>();
+    const sourceCol = disableAll || disabled.dncSource ? undefined : hasDncSource ? undefined : buildGlobalDncSourceColumn<TData>();
+    const scriptCol = disableAll || disabled.script ? undefined : hasScript ? undefined : buildGlobalScriptColumn<TData>();
+    const agentCol = disableAll || disabled.agent ? undefined : hasAgent ? undefined : buildGlobalAgentColumn<TData>();
     // Only inject Transfer Agent if any row appears to have transfer metadata
     let transferCol: ColumnDef<TData> | undefined = undefined;
-    if (!hasTransfer) {
+    if (!hasTransfer && !(disableAll || disabled.transfer)) {
       const rows = (tableProps as any)?.data as unknown[] | undefined;
       const hasAnyTransfer = Array.isArray(rows)
         ? rows.some((row) => {
@@ -677,8 +696,8 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
         : false;
       if (hasAnyTransfer) transferCol = buildGlobalTransferAgentColumn<TData>();
     }
-    const goalCol = hasGoal ? undefined : buildGlobalGoalColumn<TData>();
-    const timingCol = hasTiming ? undefined : buildGlobalTimingPrefsColumn<TData>();
+    const goalCol = disableAll || disabled.goal ? undefined : hasGoal ? undefined : buildGlobalGoalColumn<TData>();
+    const timingCol = disableAll || disabled.timing ? undefined : hasTiming ? undefined : buildGlobalTimingPrefsColumn<TData>();
 
     let out = providedColumns.slice();
     const controlsIdx = out.findIndex((c) => c.id === "controls");
@@ -712,7 +731,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     }
 
     return out;
-  }, [providedColumns]);
+  }, [providedColumns, disableGlobalColumns]);
 
   const columnIds = React.useMemo(() => {
     return new Set(
@@ -831,10 +850,15 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     [debouncedSetFilterValues, filterableColumns, enableAdvancedFilter],
   );
 
-  // If consumer provided a custom columnOrder, insert globalDnc after 'select'
+  // If consumer provided a custom columnOrder, optionally insert global columns after 'select' unless disabled
   const adjustedInitialState = React.useMemo(() => {
     if (!initialState?.columnOrder) return initialState;
     const order = initialState.columnOrder.slice();
+    const disableAll = disableGlobalColumns === true;
+    const disabled = (
+      (typeof disableGlobalColumns === "object" && disableGlobalColumns) ||
+      {}
+    ) as Record<string, boolean>;
     const has = order.includes("globalDnc");
     const hasSrc = order.includes("globalDncSource");
     const ensure = (id: string, at: number) => {
@@ -845,7 +869,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     const selectIdx = order.indexOf("select");
     let insertAt = controlsIdx >= 0 ? controlsIdx + 1 : selectIdx >= 0 ? selectIdx + 1 : 0;
 
-    if (!has) {
+    if (!has && !(disableAll || disabled.dnc)) {
       order.splice(insertAt, 0, "globalDnc");
       insertAt += 1;
     } else {
@@ -854,20 +878,20 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
       if (dncIdx >= 0) insertAt = dncIdx + 1;
     }
 
-    if (!hasSrc) {
+    if (!hasSrc && !(disableAll || disabled.dncSource)) {
       order.splice(insertAt, 0, "globalDncSource");
       insertAt += 1;
     }
 
     // Add the rest in sequence
-    insertAt = ensure("globalSalesScriptTitle", insertAt);
-    insertAt = ensure("globalAgentTitle", insertAt);
-    insertAt = ensure("globalTransferAgentTitle", insertAt);
-    insertAt = ensure("globalCampaignGoal", insertAt);
-    ensure("globalTimingPrefs", insertAt);
+    if (!(disableAll || disabled.script)) insertAt = ensure("globalSalesScriptTitle", insertAt);
+    if (!(disableAll || disabled.agent)) insertAt = ensure("globalAgentTitle", insertAt);
+    if (!(disableAll || disabled.transfer)) insertAt = ensure("globalTransferAgentTitle", insertAt);
+    if (!(disableAll || disabled.goal)) insertAt = ensure("globalCampaignGoal", insertAt);
+    if (!(disableAll || disabled.timing)) insertAt = ensure("globalTimingPrefs", insertAt);
 
     return { ...initialState, columnOrder: order };
-  }, [initialState]);
+  }, [initialState, disableGlobalColumns]);
 
   const table = useReactTable({
     ...tableProps,

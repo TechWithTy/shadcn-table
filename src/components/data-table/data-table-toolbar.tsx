@@ -15,12 +15,18 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 interface DataTableToolbarProps<TData> extends React.ComponentProps<"div"> {
   table: Table<TData>;
+  showFilters?: boolean;
+  showViewOptions?: boolean;
+  viewPosition?: "row1" | "row2";
 }
 
 export function DataTableToolbar<TData>({
   table,
   children,
   className,
+  showFilters = true,
+  showViewOptions = true,
+  viewPosition = "row2",
   ...props
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
@@ -41,60 +47,71 @@ export function DataTableToolbar<TData>({
       className={cn("flex w-full flex-col gap-2 p-1", className)}
       {...props}
     >
-      {/* Row 1: main actions (children) and Clear button */}
+      {/* Row 1: main actions (children) and optional Clear Filters button */}
       <div className="flex w-full items-center justify-between gap-2">
         <div className="flex flex-1 flex-wrap items-center gap-2">{children}</div>
-        {isFiltered && (
-          <Button
-            type="button"
-            aria-label="Clear all filters"
-            variant="outline"
-            size="sm"
-            className="h-8"
-            onClick={onReset}
-          >
-            <X className="mr-1 h-3 w-3" /> Clear
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {showFilters && isFiltered && (
+            <Button
+              type="button"
+              aria-label="Clear all filters"
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={onReset}
+            >
+              <X className="h-3 mr-1 w-3" /> Clear
+            </Button>
+          )}
+          {showViewOptions && viewPosition === "row1" && (
+            <DataTableViewOptions table={table} />
+          )}
+        </div>
       </div>
 
-      {/* Row 2: Filters popover and View options aligned to the right */}
-      <div className="flex w-full items-center justify-end gap-2">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button type="button" variant="outline" size="sm">
-              <SlidersHorizontal className="mr-2 h-4 w-4" />
-              Filters
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-80 p-3">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium">Filters</h4>
-                {isFiltered && (
-                  <Button
-                    type="button"
-                    aria-label="Reset filters"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={onReset}
-                  >
-                    <X className="mr-1 h-3 w-3" />
-                    Reset
-                  </Button>
-                )}
-              </div>
-              <div className="grid gap-3">
-                {columns.map((column) => (
-                  <DataTableToolbarFilter key={column.id} column={column} />
-                ))}
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-        <DataTableViewOptions table={table} />
-      </div>
+      {/* Row 2: Filters popover and View options (optional) aligned to the right */}
+      {(showFilters || (showViewOptions && viewPosition === "row2")) && (
+        <div className="flex w-full items-center justify-end gap-2">
+          {showFilters && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" size="sm">
+                  <SlidersHorizontal className="h-4 mr-2 w-4" />
+                  Filters
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-3">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium">Filters</h4>
+                    {isFiltered && (
+                      <Button
+                        type="button"
+                        aria-label="Reset filters"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={onReset}
+                      >
+                        <X className="h-3 mr-1 w-3" />
+                        Reset
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid gap-3">
+                    {columns.map((column) => (
+                      <DataTableToolbarFilter key={column.id} column={column} />
+                    ))}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+          {showViewOptions && viewPosition === "row2" && (
+            <DataTableViewOptions table={table} />
+          )}
+        </div>
+      )}
     </div>
   );
 }
