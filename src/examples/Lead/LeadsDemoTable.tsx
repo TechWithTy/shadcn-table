@@ -20,7 +20,7 @@ import type { SkipTraceInit } from "./utils/leadHelpers";
 
 export interface LeadsDemoTableProps {
 	/** Called when user wants to add a lead */
-	onOpenLeadModal?: () => void;
+	onOpenLeadModal?: (opts?: { initialListMode?: "select" | "create" }) => void;
 	/** Called when user wants to open Skip Trace. Provide optional init payload. */
 	onOpenSkipTrace?: (init?: SkipTraceInit) => void;
 	/** Called to open Create List modal provided by host app */

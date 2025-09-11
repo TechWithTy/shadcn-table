@@ -9,6 +9,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "../../../components/ui/dropdown-menu";
 import type { Table } from "@tanstack/react-table";
 import type { DemoRow } from "../types";
@@ -17,12 +20,18 @@ import {
   exportRowToCSV,
   exportRowsToExcel,
   exportSelectedRowsPerListAsZip,
+  exportRowsToCSV,
+  exportRowsToCSVZipPerList,
+  exportNestedLeadsToExcelZipPerList,
+  exportNestedLeadsToExcel,
+  exportNestedLeadsToCSVZipPerList,
+  exportNestedLeadsToCSV,
 } from "../exports";
 import type { SkipTraceInit } from "../utils/leadHelpers";
 
 interface TopActionsBarProps {
   table: Table<DemoRow>;
-  onOpenLeadModal?: () => void;
+  onOpenLeadModal?: (opts?: { initialListMode?: "select" | "create" }) => void;
   onOpenCreateList?: () => void;
   onOpenSkipTrace?: (init?: SkipTraceInit) => void;
   data: DemoRow[];
@@ -85,8 +94,8 @@ export function TopActionsBar({
           <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem onSelect={() => onOpenLeadModal?.()}>Add Lead</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => onOpenCreateList?.()}>Create List</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onOpenLeadModal?.({ initialListMode: "select" })}>Add Lead</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onOpenLeadModal?.({ initialListMode: "create" })}>Create List</DropdownMenuItem>
 
           <DropdownMenuItem
             disabled={selectedLen === 0}
@@ -104,77 +113,92 @@ export function TopActionsBar({
 
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem
-            disabled={selectedLen === 0}
-            onSelect={async () => {
-              const rows = getSelectedRows();
-              if (rows.length === 0) return;
-              const headers: Array<keyof DemoRow> = [
-                "list",
-                "uploadDate",
-                "records",
-                "phone",
-                "emails",
-                "socials",
-              ];
-              await exportSelectedRowsPerListAsZip(rows, headers);
-            }}
-          >
-            Excel Selected (ZIP per list)
-          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>Export</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-64">
+              <DropdownMenuLabel>Excel</DropdownMenuLabel>
+              <DropdownMenuItem
+                disabled={selectedLen === 0}
+                onSelect={async () => {
+                  const rows = getSelectedRows();
+                  if (rows.length === 0) return;
+                  await exportNestedLeadsToExcelZipPerList(rows, "nested-selected-per-list");
+                }}
+              >
+                Excel Selected (ZIP per list)
+              </DropdownMenuItem>
 
-          <DropdownMenuItem
-            onSelect={async () => {
-              const rows = table.getFilteredRowModel().rows.map((r) => r.original as DemoRow);
-              if (rows.length === 0) return;
-              const headers: Array<keyof DemoRow> = [
-                "list",
-                "uploadDate",
-                "records",
-                "phone",
-                "emails",
-                "socials",
-              ];
-              await exportRowsToExcel(rows, headers, "lists-visible");
-            }}
-          >
-            Excel Visible
-          </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={async () => {
+                  const rows = table.getFilteredRowModel().rows.map((r) => r.original as DemoRow);
+                  if (rows.length === 0) return;
+                  const lists = new Set(rows.map((r) => r.list));
+                  if (lists.size > 1) {
+                    await exportNestedLeadsToExcelZipPerList(rows, "nested-visible-per-list");
+                  } else {
+                    await exportNestedLeadsToExcel(rows, "nested-visible");
+                  }
+                }}
+              >
+                Excel Visible
+              </DropdownMenuItem>
 
-          <DropdownMenuItem
-            onSelect={async () => {
-              const headers: Array<keyof DemoRow> = [
-                "list",
-                "uploadDate",
-                "records",
-                "phone",
-                "emails",
-                "socials",
-              ];
-              await exportRowsToExcel(data, headers, "lists-all");
-            }}
-          >
-            Excel All
-          </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={async () => {
+                  const lists = new Set(data.map((r) => r.list));
+                  if (lists.size > 1) {
+                    await exportNestedLeadsToExcelZipPerList(data, "nested-all-per-list");
+                  } else {
+                    await exportNestedLeadsToExcel(data, "nested-all");
+                  }
+                }}
+              >
+                Excel All
+              </DropdownMenuItem>
 
-          <DropdownMenuItem
-            disabled={selectedLen === 0}
-            onSelect={() => {
-              const rows = getSelectedRows();
-              for (const r of rows) {
-                exportRowToCSV(r, [
-                  "list",
-                  "uploadDate",
-                  "records",
-                  "phone",
-                  "emails",
-                  "socials",
-                ]);
-              }
-            }}
-          >
-            CSV Selected
-          </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>CSV</DropdownMenuLabel>
+
+              <DropdownMenuItem
+                disabled={selectedLen === 0}
+                onSelect={async () => {
+                  const rows = getSelectedRows();
+                  if (rows.length === 0) return;
+                  await exportNestedLeadsToCSVZipPerList(rows, "nested-selected-csv");
+                }}
+              >
+                CSV Selected (ZIP per list)
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onSelect={async () => {
+                  const rows = table.getFilteredRowModel().rows.map((r) => r.original as DemoRow);
+                  if (rows.length === 0) return;
+                  const lists = new Set(rows.map((r) => r.list));
+                  if (lists.size > 1) {
+                    await exportNestedLeadsToCSVZipPerList(rows, "nested-visible-csv");
+                  } else {
+                    exportNestedLeadsToCSV(rows, "nested-visible");
+                  }
+                }}
+              >
+                CSV Visible
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onSelect={async () => {
+                  const lists = new Set(data.map((r) => r.list));
+                  if (lists.size > 1) {
+                    await exportNestedLeadsToCSVZipPerList(data, "nested-all-csv");
+                  } else {
+                    exportNestedLeadsToCSV(data, "nested-all");
+                  }
+                }}
+              >
+                CSV All
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
