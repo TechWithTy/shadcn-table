@@ -1,441 +1,510 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import * as React from "react";
+import type * as React from "react";
 import { DataTableColumnHeader } from "../../../../components/data-table/data-table-column-header";
 import { Checkbox } from "../../../../components/ui/checkbox";
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import type { CallCampaign } from "../../../../../../../types/_dashboard/campaign";
-import { getTextMetric, getLastMessageAt, downloadCampaignZip, getDeviceHint } from "./helpers";
+import {
+	getTextMetric,
+	getLastMessageAt,
+	downloadCampaignZip,
+	getDeviceHint,
+} from "./helpers";
 import { Pause, Play, Square, ThumbsDown, ThumbsUp } from "lucide-react";
 import { stopRowClick, withStopPropagation } from "../../../../utils/events";
-import { Popover, PopoverContent, PopoverTrigger } from "../../../../components/ui/popover";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "../../../../components/ui/popover";
 import { Input } from "../../../../components/ui/input";
 
 export function buildTextCampaignColumns(): ColumnDef<CallCampaign>[] {
-  const cols: ColumnDef<CallCampaign>[] = [
-    {
-      id: "select",
-      header: ({ table }) => (
-        <div className="flex items-center gap-2 pl-2">
-          <div className="grid h-5 w-5 place-items-center">
-            <Checkbox
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              checked={
-                table.getIsAllPageRowsSelected() ||
-                (table.getIsSomePageRowsSelected() && ("indeterminate" as unknown as boolean))
-              }
-              onCheckedChange={(value: boolean | "indeterminate") => table.toggleAllPageRowsSelected(!!value)}
-              aria-label="Select all"
-              className="h-4 w-4 leading-none grid place-items-center"
-            />
-          </div>
-          <span className="text-xs text-muted-foreground select-none">Select</span>
-        </div>
-      ),
-      cell: ({ row }) => (
-        <div className="grid h-10 place-items-center">
-          <Checkbox
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            checked={row.getIsSelected()}
-            onCheckedChange={(value: boolean | "indeterminate") => row.toggleSelected(!!value)}
-            aria-label="Select row"
-            className="h-4 w-4 leading-none grid place-items-center"
-          />
-        </div>
-      ),
-      enableSorting: false,
-      enableHiding: false,
-      size: 48,
-    },
-    {
-      id: "controls",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Controls" />
-      ),
-      cell: ({ row, table }) => {
-        const status = String((row.original as any).status ?? "");
-        const isActive = ["queued", "delivering", "pending"].includes(status);
-        const isPaused = status === "paused";
-        const canControl = isActive || isPaused;
-        const meta = ((table.options as any)?.meta ?? {}) as {
-          onPause?: (r: any) => void;
-          onResume?: (r: any) => void;
-          onStop?: (r: any) => void;
-        };
-        return (
-          <div className="flex items-center gap-2" onClick={stopRowClick}>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              aria-label={isPaused ? "Resume" : "Pause"}
-              disabled={!canControl}
-              onClick={withStopPropagation(() => {
-                if (!canControl) return;
-                if (isPaused) meta.onResume?.(row.original);
-                else meta.onPause?.(row.original);
-              })}
-            >
-              {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              aria-label="Stop"
-              disabled={!canControl}
-              onClick={withStopPropagation(() => {
-                if (!canControl) return;
-                meta.onStop?.(row.original);
-              })}
-            >
-              <Square className="h-4 w-4" />
-            </Button>
-          </div>
-        );
-      },
-      enableSorting: false,
-      enableHiding: false,
-      size: 220,
-    },
-    {
-      id: "feedback",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Feedback" />
-      ),
-      cell: ({ row, table }) => {
-        const r = row.original as any;
-        const status = String(r.status ?? "");
-        const isCompleted = status === "completed";
-        const meta = ((table.options as any)?.meta ?? {}) as {
-          getFeedback?: (r: any) => { sentiment: "up" | "down" | null; note: string } | undefined;
-          onToggleFeedback?: (r: any, s: "up" | "down") => void;
-          onFeedbackNoteChange?: (r: any, note: string) => void;
-        };
-        const fb = meta.getFeedback?.(r) ?? { sentiment: null, note: "" };
-        const name = String(r.name ?? "this");
-        const upActive = fb.sentiment === "up";
-        const downActive = fb.sentiment === "down";
-        return (
-          <div className="flex items-center gap-2" onClick={stopRowClick}>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  aria-label="Thumbs up"
-                  className={upActive ? "text-green-600 border-green-500" : ""}
-                  disabled={!isCompleted}
-                  onClick={withStopPropagation(() => {
-                    if (!isCompleted) return;
-                    meta.onToggleFeedback?.(r, "up");
-                  })}
-                >
-                  <ThumbsUp className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              {isCompleted ? (
-                <PopoverContent align="start" className="w-64" onClick={stopRowClick}>
-                  <Input
-                    placeholder={`Why did you ${upActive ? "like" : "like"} \"${name}\"?`}
-                    value={fb.note}
-                    onChange={(e) => meta.onFeedbackNoteChange?.(r, e.target.value)}
-                  />
-                </PopoverContent>
-              ) : null}
-            </Popover>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  aria-label="Thumbs down"
-                  className={downActive ? "text-red-600 border-red-500" : ""}
-                  disabled={!isCompleted}
-                  onClick={withStopPropagation(() => {
-                    if (!isCompleted) return;
-                    meta.onToggleFeedback?.(r, "down");
-                  })}
-                >
-                  <ThumbsDown className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              {isCompleted ? (
-                <PopoverContent align="start" className="w-64" onClick={stopRowClick}>
-                  <Input
-                    placeholder={`Why did you ${downActive ? "dislike" : "dislike"} \"${name}\"?`}
-                    value={fb.note}
-                    onChange={(e) => meta.onFeedbackNoteChange?.(r, e.target.value)}
-                  />
-                </PopoverContent>
-              ) : null}
-            </Popover>
-          </div>
-        );
-      },
-      enableSorting: false,
-      enableHiding: false,
-      size: 170,
-    },
-    {
-      accessorKey: "name",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Campaign Name" />
-      ),
-      cell: ({ getValue }) => (
-        <span className="block truncate max-w-[220px]" title={String(getValue())}>
-          {String(getValue())}
-        </span>
-      ),
-      enableColumnFilter: true,
-      meta: { label: "Campaign Name", variant: "text", placeholder: "Search name" },
-      size: 220,
-    },
-    {
-      id: "device",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Device" />
-      ),
-      meta: { label: "Device", variant: "text" },
-      cell: ({ row }) => {
-        const label = getDeviceHint(row.original as any);
-        const isApple = label === "Apple";
-        return (
-          <Badge variant={isApple ? "default" : "outline"} title={label}>
-            {label}
-          </Badge>
-        );
-      },
-      size: 96,
-    },
-    {
-      accessorKey: "status",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
-      ),
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const v = String(row.getValue(id) ?? "");
-        return Array.isArray(value) ? value.includes(v) : String(value) === v;
-      },
-      meta: {
-        label: "Status",
-        variant: "multiSelect",
-        options: [
-          { label: "Delivering", value: "delivering" },
-          { label: "Completed", value: "completed" },
-          { label: "Failed", value: "failed" },
-          { label: "Missed", value: "missed" },
-          { label: "Delivered", value: "delivered" },
-          { label: "Pending", value: "pending" },
-          { label: "Queued", value: "queued" },
-          { label: "Paused", value: "paused" },
-          { label: "Read", value: "read" },
-          { label: "Unread", value: "unread" },
-        ],
-      },
-      cell: ({ getValue }) => (
-        <span className="block truncate max-w-[140px]" title={String(getValue())}>
-          {String(getValue())}
-        </span>
-      ),
-      size: 140,
-    },
-    {
-      id: "transfer",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Transfer" />
-      ),
-      accessorFn: (row) => (row as any)?.transfer?.type ?? "-",
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const v = String(row.getValue(id) ?? "");
-        return Array.isArray(value) ? value.includes(v) : String(value) === v;
-      },
-      meta: {
-        label: "Transfer",
-        variant: "select",
-        options: [
-          { label: "Chat", value: "chat_agent" },
-          { label: "Voice (In)", value: "voice_inbound" },
-          { label: "Voice (Out)", value: "voice_outbound" },
-          { label: "Text", value: "text" },
-          { label: "Social", value: "social_media" },
-          { label: "Appraisal", value: "appraisal" },
-          { label: "Live Person", value: "live_person" },
-          { label: "Live Person Calendar", value: "live_person_calendar" },
-        ],
-      },
-      cell: ({ row }) => {
-        const t = (row.original as any).transfer as
-          | { type: string; agentId: string }
-          | undefined;
-        if (!t) return <span>-</span>;
-        const label =
-          t.type === "chat_agent"
-            ? "Chat"
-            : t.type === "voice_inbound"
-            ? "Voice (In)"
-            : t.type === "voice_outbound"
-            ? "Voice (Out)"
-            : t.type === "text"
-            ? "Text"
-            : t.type === "social_media"
-            ? "Social"
-            : t.type === "appraisal"
-            ? "Appraisal"
-            : t.type === "live_person"
-            ? "Live Person"
-            : t.type === "live_person_calendar"
-            ? "Live Person Calendar"
-            : t.type;
-        return <Badge title={t.agentId}>{label}</Badge>;
-      },
-      size: 140,
-    },
-    {
-      accessorKey: "transfers",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Transfers" />
-      ),
-      cell: ({ getValue }) => (
-        <span className="tabular-nums">{String(getValue() ?? 0)}</span>
-      ),
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const n = Number(row.getValue(id) ?? 0);
-        const [min, max] = Array.isArray(value) ? value : [];
-        const lo = typeof min === "number" ? min : -Infinity;
-        const hi = typeof max === "number" ? max : Infinity;
-        return n >= lo && n <= hi;
-      },
-      meta: { label: "Transfers", variant: "range" },
-      size: 110,
-    },
-    {
-      accessorKey: "startDate",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Created At" />
-      ),
-      enableColumnFilter: true,
-      meta: { label: "Created At", variant: "dateRange" },
-      cell: ({ getValue }) => {
-        const d = new Date(String(getValue()));
-        return (
-          <span className="tabular-nums">
-            {isNaN(d.getTime()) ? "-" : d.toLocaleDateString()}
-          </span>
-        );
-      },
-      size: 120,
-    },
-    {
-      id: "sent",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Sent" />,
-      accessorFn: (row) => getTextMetric(row as CallCampaign, "sent"),
-      cell: ({ getValue }) => <span className="tabular-nums">{String(getValue() ?? 0)}</span>,
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const n = Number(row.getValue(id) ?? 0);
-        const [min, max] = Array.isArray(value) ? value : [];
-        const lo = typeof min === "number" ? min : -Infinity;
-        const hi = typeof max === "number" ? max : Infinity;
-        return n >= lo && n <= hi;
-      },
-      meta: { label: "Sent", variant: "range" },
-      size: 80,
-    },
-    {
-      id: "delivered",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Delivered" />,
-      accessorFn: (row) => getTextMetric(row as CallCampaign, "delivered"),
-      cell: ({ getValue }) => <span className="tabular-nums">{String(getValue() ?? 0)}</span>,
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const n = Number(row.getValue(id) ?? 0);
-        const [min, max] = Array.isArray(value) ? value : [];
-        const lo = typeof min === "number" ? min : -Infinity;
-        const hi = typeof max === "number" ? max : Infinity;
-        return n >= lo && n <= hi;
-      },
-      meta: { label: "Delivered", variant: "range" },
-      size: 96,
-    },
-    {
-      id: "failed",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Failed" />,
-      accessorFn: (row) => getTextMetric(row as CallCampaign, "failed"),
-      cell: ({ getValue }) => <span className="tabular-nums">{String(getValue() ?? 0)}</span>,
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const n = Number(row.getValue(id) ?? 0);
-        const [min, max] = Array.isArray(value) ? value : [];
-        const lo = typeof min === "number" ? min : -Infinity;
-        const hi = typeof max === "number" ? max : Infinity;
-        return n >= lo && n <= hi;
-      },
-      meta: { label: "Failed", variant: "range" },
-      size: 84,
-    },
-    {
-      id: "totalMessages",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Total Messages" />,
-      accessorFn: (row) => getTextMetric(row as CallCampaign, "total"),
-      cell: ({ getValue }) => <span className="tabular-nums">{String(getValue() ?? 0)}</span>,
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const n = Number(row.getValue(id) ?? 0);
-        const [min, max] = Array.isArray(value) ? value : [];
-        const lo = typeof min === "number" ? min : -Infinity;
-        const hi = typeof max === "number" ? max : Infinity;
-        return n >= lo && n <= hi;
-      },
-      meta: { label: "Total Messages", variant: "range" },
-      size: 120,
-    },
-    {
-      id: "lastMessageAt",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Last Message Sent" />,
-      accessorFn: (row) => getLastMessageAt(row as CallCampaign) || "",
-      cell: ({ getValue }) => <span className="whitespace-nowrap">{String(getValue() || "-")}</span>,
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const raw = String(row.getValue(id) || "");
-        const ts = raw ? new Date(raw).getTime() : NaN;
-        const [start, end] = Array.isArray(value) ? value : [];
-        const lo = start ? new Date(start as string).getTime() : -Infinity;
-        const hi = end ? new Date(end as string).getTime() : Infinity;
-        return Number.isNaN(ts) ? false : ts >= lo && ts <= hi;
-      },
-      meta: { label: "Last Message Sent", variant: "dateRange" },
-      size: 180,
-    },
-    {
-      id: "download",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Download Messages" />,
-      cell: ({ row }) => (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={(e) => {
-            e.stopPropagation();
-            // Prefer ZIP of CSVs (summary, leads, messages, per-lead)
-            void downloadCampaignZip(row.original as CallCampaign);
-          }}
-        >
-          Download ZIP
-        </Button>
-      ),
-      enableSorting: false,
-      enableHiding: false,
-      size: 160,
-    },
-  ];
+	type TableMeta = {
+		onPause?: (r: CallCampaign) => void;
+		onResume?: (r: CallCampaign) => void;
+		onStop?: (r: CallCampaign) => void;
+		getFeedback?: (
+			r: CallCampaign,
+		) => { sentiment: "up" | "down" | null; note: string } | undefined;
+		onToggleFeedback?: (r: CallCampaign, s: "up" | "down") => void;
+		onFeedbackNoteChange?: (r: CallCampaign, note: string) => void;
+	};
 
-  return cols;
+	const cols: ColumnDef<CallCampaign>[] = [
+		{
+			id: "select",
+			header: ({ table }) => (
+				<div className="flex items-center gap-2 pl-2">
+					<div className="grid h-5 w-5 place-items-center">
+						<Checkbox
+							onClick={(e: React.MouseEvent) => e.stopPropagation()}
+							checked={
+								table.getIsAllPageRowsSelected() ||
+								(table.getIsSomePageRowsSelected() &&
+									("indeterminate" as unknown as boolean))
+							}
+							onCheckedChange={(value: boolean | "indeterminate") =>
+								table.toggleAllPageRowsSelected(!!value)
+							}
+							aria-label="Select all"
+							className="grid h-4 w-4 place-items-center leading-none"
+						/>
+					</div>
+					<span className="select-none text-muted-foreground text-xs">
+						Select
+					</span>
+				</div>
+			),
+			cell: ({ row }) => (
+				<div className="grid h-10 place-items-center">
+					<Checkbox
+						onClick={(e: React.MouseEvent) => e.stopPropagation()}
+						checked={row.getIsSelected()}
+						onCheckedChange={(value: boolean | "indeterminate") =>
+							row.toggleSelected(!!value)
+						}
+						aria-label="Select row"
+						className="grid h-4 w-4 place-items-center leading-none"
+					/>
+				</div>
+			),
+			enableSorting: false,
+			enableHiding: false,
+			size: 48,
+		},
+		{
+			id: "controls",
+			header: ({ column }) => (
+				<DataTableColumnHeader column={column} title="Controls" />
+			),
+			cell: ({ row, table }) => {
+				const status = String(row.original.status ?? "");
+				const isActive = ["queued", "delivering", "pending"].includes(status);
+				const isPaused = status === "paused";
+				const canControl = isActive || isPaused;
+				const meta = table.options?.meta as TableMeta;
+				return (
+					<div className="flex items-center gap-2" onMouseDown={stopRowClick}>
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							aria-label={isPaused ? "Resume" : "Pause"}
+							disabled={!canControl}
+							onClick={withStopPropagation(() => {
+								if (!canControl) return;
+								if (isPaused) meta.onResume?.(row.original);
+								else meta.onPause?.(row.original);
+							})}
+						>
+							{isPaused ? (
+								<Play className="h-4 w-4" />
+							) : (
+								<Pause className="h-4 w-4" />
+							)}
+						</Button>
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							aria-label="Stop"
+							disabled={!canControl}
+							onClick={withStopPropagation(() => {
+								if (!canControl) return;
+								meta.onStop?.(row.original);
+							})}
+						>
+							<Square className="h-4 w-4" />
+						</Button>
+					</div>
+				);
+			},
+			enableSorting: false,
+			enableHiding: false,
+			size: 220,
+		},
+		{
+			id: "feedback",
+			header: ({ column }) => (
+				<DataTableColumnHeader column={column} title="Feedback" />
+			),
+			cell: ({ row, table }) => {
+				const r = row.original;
+				const status = String(r.status ?? "");
+				const isCompleted = status === "completed";
+				const meta = table.options?.meta as TableMeta;
+				const fb = meta.getFeedback?.(r) ?? { sentiment: null, note: "" };
+				const name = String(r.name ?? "this");
+				const upActive = fb.sentiment === "up";
+				const downActive = fb.sentiment === "down";
+				return (
+					<div className="flex items-center gap-2" onMouseDown={stopRowClick}>
+						<Popover>
+							<PopoverTrigger asChild>
+								<Button
+									type="button"
+									size="icon"
+									variant="outline"
+									aria-label="Thumbs up"
+									className={upActive ? "border-green-500 text-green-600" : ""}
+									disabled={!isCompleted}
+									onClick={withStopPropagation(() => {
+										if (!isCompleted) return;
+										meta.onToggleFeedback?.(r, "up");
+									})}
+								>
+									<ThumbsUp className="h-4 w-4" />
+								</Button>
+							</PopoverTrigger>
+							{isCompleted ? (
+								<PopoverContent
+									align="start"
+									className="w-64"
+									onMouseDown={stopRowClick}
+								>
+									<Input
+										placeholder={`Why did you ${upActive ? "like" : "dislike"} \"${name}\"?`}
+										value={fb.note}
+										onChange={(e) =>
+											meta.onFeedbackNoteChange?.(r, e.target.value)
+										}
+									/>
+								</PopoverContent>
+							) : null}
+						</Popover>
+						<Popover>
+							<PopoverTrigger asChild>
+								<Button
+									type="button"
+									size="icon"
+									variant="outline"
+									aria-label="Thumbs down"
+									className={downActive ? "border-red-500 text-red-600" : ""}
+									disabled={!isCompleted}
+									onClick={withStopPropagation(() => {
+										if (!isCompleted) return;
+										meta.onToggleFeedback?.(r, "down");
+									})}
+								>
+									<ThumbsDown className="h-4 w-4" />
+								</Button>
+							</PopoverTrigger>
+							{isCompleted ? (
+								<PopoverContent
+									align="start"
+									className="w-64"
+									onMouseDown={stopRowClick}
+								>
+									<Input
+										placeholder={`Why did you ${downActive ? "dislike" : "like"} \"${name}\"?`}
+										value={fb.note}
+										onChange={(e) =>
+											meta.onFeedbackNoteChange?.(r, e.target.value)
+										}
+									/>
+								</PopoverContent>
+							) : null}
+						</Popover>
+					</div>
+				);
+			},
+			enableSorting: false,
+			enableHiding: false,
+			size: 170,
+		},
+		{
+			accessorKey: "name",
+			header: ({ column }) => (
+				<DataTableColumnHeader column={column} title="Campaign Name" />
+			),
+			cell: ({ getValue }) => (
+				<span
+					className="block max-w-[220px] truncate"
+					title={String(getValue())}
+				>
+					{String(getValue())}
+				</span>
+			),
+			enableColumnFilter: true,
+			meta: {
+				label: "Campaign Name",
+				variant: "text",
+				placeholder: "Search name",
+			},
+			size: 220,
+		},
+		{
+			id: "device",
+			header: ({ column }) => (
+				<DataTableColumnHeader column={column} title="Device" />
+			),
+			meta: { label: "Device", variant: "text" },
+			cell: ({ row }) => {
+				const label = getDeviceHint(row.original);
+				const isApple = label === "Apple";
+				return (
+					<Badge variant={isApple ? "default" : "outline"} title={label}>
+						{label}
+					</Badge>
+				);
+			},
+			size: 96,
+		},
+		{
+			accessorKey: "status",
+			header: ({ column }) => (
+				<DataTableColumnHeader column={column} title="Status" />
+			),
+			enableColumnFilter: true,
+			filterFn: (row, id, value) => {
+				const v = String(row.getValue(id) ?? "");
+				return Array.isArray(value) ? value.includes(v) : String(value) === v;
+			},
+			meta: {
+				label: "Status",
+				variant: "multiSelect",
+				options: [
+					{ label: "Delivering", value: "delivering" },
+					{ label: "Completed", value: "completed" },
+					{ label: "Failed", value: "failed" },
+					{ label: "Missed", value: "missed" },
+					{ label: "Delivered", value: "delivered" },
+					{ label: "Pending", value: "pending" },
+					{ label: "Queued", value: "queued" },
+					{ label: "Paused", value: "paused" },
+					{ label: "Read", value: "read" },
+					{ label: "Unread", value: "unread" },
+				],
+			},
+			cell: ({ getValue }) => (
+				<span
+					className="block max-w-[140px] truncate"
+					title={String(getValue())}
+				>
+					{String(getValue())}
+				</span>
+			),
+			size: 140,
+		},
+		{
+			id: "transfer",
+			header: ({ column }) => (
+				<DataTableColumnHeader column={column} title="Transfer" />
+			),
+			accessorFn: (row) => row?.transfer?.type ?? "-",
+			enableColumnFilter: true,
+			filterFn: (row, id, value) => {
+				const v = String(row.getValue(id) ?? "");
+				return Array.isArray(value) ? value.includes(v) : String(value) === v;
+			},
+			meta: {
+				label: "Transfer",
+				variant: "select",
+				options: [
+					{ label: "Chat", value: "chat_agent" },
+					{ label: "Voice (In)", value: "voice_inbound" },
+					{ label: "Voice (Out)", value: "voice_outbound" },
+					{ label: "Text", value: "text" },
+					{ label: "Social", value: "social_media" },
+					{ label: "Appraisal", value: "appraisal" },
+					{ label: "Live Person", value: "live_person" },
+					{ label: "Live Person Calendar", value: "live_person_calendar" },
+				],
+			},
+			cell: ({ row }) => {
+				const t = row.original.transfer;
+				if (!t) return <span>-</span>;
+				const label =
+					t.type === "chat_agent"
+						? "Chat"
+						: t.type === "voice_inbound"
+							? "Voice (In)"
+							: t.type === "voice_outbound"
+								? "Voice (Out)"
+								: t.type === "text"
+									? "Text"
+									: t.type === "social_media"
+										? "Social"
+										: t.type === "appraisal"
+											? "Appraisal"
+											: t.type === "live_person"
+												? "Live Person"
+												: t.type === "live_person_calendar"
+													? "Live Person Calendar"
+													: t.type;
+				return <Badge title={t.agentId}>{label}</Badge>;
+			},
+			size: 140,
+		},
+		{
+			accessorKey: "transfers",
+			header: ({ column }) => (
+				<DataTableColumnHeader column={column} title="Transfers" />
+			),
+			cell: ({ getValue }) => (
+				<span className="tabular-nums">{String(getValue() ?? 0)}</span>
+			),
+			enableColumnFilter: true,
+			filterFn: (row, id, value) => {
+				const n = Number(row.getValue(id) ?? 0);
+				const [min, max] = Array.isArray(value) ? value : [];
+				const lo = typeof min === "number" ? min : Number.NEGATIVE_INFINITY;
+				const hi = typeof max === "number" ? max : Number.POSITIVE_INFINITY;
+				return n >= lo && n <= hi;
+			},
+			meta: { label: "Transfers", variant: "range" },
+			size: 110,
+		},
+		{
+			accessorKey: "startDate",
+			header: ({ column }) => (
+				<DataTableColumnHeader column={column} title="Created At" />
+			),
+			enableColumnFilter: true,
+			meta: { label: "Created At", variant: "dateRange" },
+			cell: ({ getValue }) => {
+				const d = new Date(String(getValue()));
+				return (
+					<span className="tabular-nums">
+						{Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString()}
+					</span>
+				);
+			},
+			size: 120,
+		},
+		{
+			id: "sent",
+			header: ({ column }) => (
+				<DataTableColumnHeader column={column} title="Sent" />
+			),
+			accessorFn: (row) => getTextMetric(row as CallCampaign, "sent"),
+			cell: ({ getValue }) => (
+				<span className="tabular-nums">{String(getValue() ?? 0)}</span>
+			),
+			enableColumnFilter: true,
+			filterFn: (row, id, value) => {
+				const n = Number(row.getValue(id) ?? 0);
+				const [min, max] = Array.isArray(value) ? value : [];
+				const lo = typeof min === "number" ? min : Number.NEGATIVE_INFINITY;
+				const hi = typeof max === "number" ? max : Number.POSITIVE_INFINITY;
+				return n >= lo && n <= hi;
+			},
+			meta: { label: "Sent", variant: "range" },
+			size: 80,
+		},
+		{
+			id: "delivered",
+			header: ({ column }) => (
+				<DataTableColumnHeader column={column} title="Delivered" />
+			),
+			accessorFn: (row) => getTextMetric(row as CallCampaign, "delivered"),
+			cell: ({ getValue }) => (
+				<span className="tabular-nums">{String(getValue() ?? 0)}</span>
+			),
+			enableColumnFilter: true,
+			filterFn: (row, id, value) => {
+				const n = Number(row.getValue(id) ?? 0);
+				const [min, max] = Array.isArray(value) ? value : [];
+				const lo = typeof min === "number" ? min : Number.NEGATIVE_INFINITY;
+				const hi = typeof max === "number" ? max : Number.POSITIVE_INFINITY;
+				return n >= lo && n <= hi;
+			},
+			meta: { label: "Delivered", variant: "range" },
+			size: 96,
+		},
+		{
+			id: "failed",
+			header: ({ column }) => (
+				<DataTableColumnHeader column={column} title="Failed" />
+			),
+			accessorFn: (row) => getTextMetric(row as CallCampaign, "failed"),
+			cell: ({ getValue }) => (
+				<span className="tabular-nums">{String(getValue() ?? 0)}</span>
+			),
+			enableColumnFilter: true,
+			filterFn: (row, id, value) => {
+				const n = Number(row.getValue(id) ?? 0);
+				const [min, max] = Array.isArray(value) ? value : [];
+				const lo = typeof min === "number" ? min : Number.NEGATIVE_INFINITY;
+				const hi = typeof max === "number" ? max : Number.POSITIVE_INFINITY;
+				return n >= lo && n <= hi;
+			},
+			meta: { label: "Failed", variant: "range" },
+			size: 84,
+		},
+		{
+			id: "totalMessages",
+			header: ({ column }) => (
+				<DataTableColumnHeader column={column} title="Total Messages" />
+			),
+			accessorFn: (row) => getTextMetric(row as CallCampaign, "total"),
+			cell: ({ getValue }) => (
+				<span className="tabular-nums">{String(getValue() ?? 0)}</span>
+			),
+			enableColumnFilter: true,
+			filterFn: (row, id, value) => {
+				const n = Number(row.getValue(id) ?? 0);
+				const [min, max] = Array.isArray(value) ? value : [];
+				const lo = typeof min === "number" ? min : Number.NEGATIVE_INFINITY;
+				const hi = typeof max === "number" ? max : Number.POSITIVE_INFINITY;
+				return n >= lo && n <= hi;
+			},
+			meta: { label: "Total Messages", variant: "range" },
+			size: 120,
+		},
+		{
+			id: "lastMessageAt",
+			header: ({ column }) => (
+				<DataTableColumnHeader column={column} title="Last Message Sent" />
+			),
+			accessorFn: (row) => getLastMessageAt(row as CallCampaign) || "",
+			cell: ({ getValue }) => (
+				<span className="whitespace-nowrap">{String(getValue() || "-")}</span>
+			),
+			enableColumnFilter: true,
+			filterFn: (row, id, value) => {
+				const raw = String(row.getValue(id) || "");
+				const ts = raw ? new Date(raw).getTime() : Number.NaN;
+				const [start, end] = Array.isArray(value) ? value : [];
+				const lo = start
+					? new Date(start as string).getTime()
+					: Number.NEGATIVE_INFINITY;
+				const hi = end
+					? new Date(end as string).getTime()
+					: Number.POSITIVE_INFINITY;
+				return Number.isNaN(ts) ? false : ts >= lo && ts <= hi;
+			},
+			meta: { label: "Last Message Sent", variant: "dateRange" },
+			size: 180,
+		},
+		{
+			id: "download",
+			header: ({ column }) => (
+				<DataTableColumnHeader column={column} title="Download Messages" />
+			),
+			cell: ({ row }) => (
+				<Button
+					type="button"
+					size="sm"
+					variant="outline"
+					onClick={(e) => {
+						e.stopPropagation();
+						// Prefer ZIP of CSVs (summary, leads, messages, per-lead)
+						void downloadCampaignZip(row.original);
+					}}
+				>
+					Download ZIP
+				</Button>
+			),
+			enableSorting: false,
+			enableHiding: false,
+			size: 160,
+		},
+	];
+
+	return cols;
 }

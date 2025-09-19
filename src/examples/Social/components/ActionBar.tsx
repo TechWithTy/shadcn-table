@@ -13,11 +13,26 @@ import { DataTableExportButton } from "../../../components/data-table/data-table
 import type { Table } from "@tanstack/react-table";
 import type { CallCampaign } from "../../../../../../types/_dashboard/campaign";
 
+// Narrow, local type for the Social example rows. We extend CallCampaign with
+// optional social fields used by this component to avoid `any` casts.
+type SocialRow = CallCampaign & {
+  platform?: "facebook" | "linkedin" | string;
+  facebookSubscriberId?: string;
+  facebookExternalId?: string;
+  manychatFlowId?: string;
+  manychatFlowName?: string;
+  linkedinChatId?: string;
+  linkedinProfileUrl?: string;
+  linkedinPublicId?: string;
+  liTemplateType?: string;
+  liTemplateName?: string;
+};
+
 interface ActionBarProps {
-  table: Table<CallCampaign>;
-  getSelectedRows: () => CallCampaign[];
-  getAllRows: () => CallCampaign[];
-  setAiRows: (rows: CallCampaign[]) => void;
+  table: Table<SocialRow>;
+  getSelectedRows: () => SocialRow[];
+  getAllRows: () => SocialRow[];
+  setAiRows: (rows: SocialRow[]) => void;
   setAiOpen: (v: boolean) => void;
 }
 
@@ -30,19 +45,22 @@ export const ActionBar: React.FC<ActionBarProps> = ({
 }) => {
   const [sending, setSending] = React.useState<null | "fb" | "li">(null);
 
-  function canSendFB(row: CallCampaign): boolean {
-    const o: any = row;
-    if (o.platform !== "facebook") return false;
-    const hasAudience = Boolean(o.facebookSubscriberId || o.facebookExternalId);
-    const hasFlow = Boolean(o.manychatFlowId || o.manychatFlowName);
+  function hasValue(v: unknown): boolean {
+    return v !== null && v !== undefined && v !== "";
+  }
+
+  function canSendFB(row: SocialRow): boolean {
+    if (row.platform !== "facebook") return false;
+    const hasAudience = hasValue(row.facebookSubscriberId) || hasValue(row.facebookExternalId);
+    const hasFlow = hasValue(row.manychatFlowId) || hasValue(row.manychatFlowName);
     return hasAudience && hasFlow;
   }
 
-  function canSendLI(row: CallCampaign): boolean {
-    const o: any = row;
-    if (o.platform !== "linkedin") return false;
-    const hasAudience = Boolean(o.linkedinChatId || o.linkedinProfileUrl || o.linkedinPublicId);
-    const hasTemplate = Boolean(o.liTemplateType || o.liTemplateName);
+  function canSendLI(row: SocialRow): boolean {
+    if (row.platform !== "linkedin") return false;
+    const hasAudience =
+      hasValue(row.linkedinChatId) || hasValue(row.linkedinProfileUrl) || hasValue(row.linkedinPublicId);
+    const hasTemplate = hasValue(row.liTemplateType) || hasValue(row.liTemplateName);
     return hasAudience && hasTemplate;
   }
 
@@ -116,7 +134,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
       {/* Social mock actions */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button type="button" size="sm" variant="outline" disabled={!!sending}>
+          <Button type="button" size="sm" variant="outline" disabled={sending !== null}>
             {sending ? (sending === "fb" ? "Sending FB..." : "Sending LI...") : "Social Send"}
           </Button>
         </DropdownMenuTrigger>
@@ -125,7 +143,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           <DropdownMenuSeparator />
           <DropdownMenuItem
             disabled={(() => {
-              if (!!sending) return true;
+              if (sending) return true;
               const eligible = getSelectedRows().filter(canSendFB).length;
               return eligible === 0;
             })()}
@@ -142,7 +160,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           </DropdownMenuItem>
           <DropdownMenuItem
             disabled={(() => {
-              if (!!sending) return true;
+              if (sending) return true;
               const eligible = getAllRows().filter(canSendFB).length;
               return eligible === 0;
             })()}
@@ -163,7 +181,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           <DropdownMenuSeparator />
           <DropdownMenuItem
             disabled={(() => {
-              if (!!sending) return true;
+              if (sending) return true;
               const eligible = getSelectedRows().filter(canSendLI).length;
               return eligible === 0;
             })()}
@@ -180,7 +198,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           </DropdownMenuItem>
           <DropdownMenuItem
             disabled={(() => {
-              if (!!sending) return true;
+              if (sending) return true;
               const eligible = getAllRows().filter(canSendLI).length;
               return eligible === 0;
             })()}

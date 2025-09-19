@@ -37,8 +37,13 @@ const STREETS = [
 ] as const;
 const KINDS: ActivityEvent["kind"][] = ["call", "email", "social", "note"];
 
-export const pick = <T>(arr: readonly T[]): T =>
-	arr[Math.floor(Math.random() * arr.length)]!;
+export function pick<T>(arr: readonly T[]): T {
+	const i = Math.floor(Math.random() * arr.length);
+	const item = arr[i];
+	if (item === undefined)
+		throw new Error(`Array is empty or item at ${i} is undefined`);
+	return item;
+}
 
 export const randPhone = (): string => {
 	const a = Math.floor(100 + Math.random() * 900);
@@ -88,7 +93,7 @@ export function makeLeads(n: number, listName: string): DemoLead[] {
 				{ label: "LinkedIn", url: `https://linkedin.com/in/${baseHandle}` },
 				{
 					label: "Instagram",
-					url: `https://instagram.com/${name.split(" ")[0].toLowerCase()}`,
+					url: `https://instagram.com/${(name?.split?.(" ")[0] ?? "").toLowerCase()}`,
 				},
 			],
 			status: pick([
@@ -118,8 +123,8 @@ export function makeLeads(n: number, listName: string): DemoLead[] {
 				},
 				{
 					platform: "Instagram",
-					username: name.split(" ")[0].toLowerCase(),
-					url: `https://instagram.com/${name.split(" ")[0].toLowerCase()}`,
+					username: (name?.split?.(" ")?.[0] ?? "").toLowerCase(),
+					url: `https://instagram.com/${typeof name === "string" && name.split ? (name.split(" ")[0] || "").toLowerCase() : ""}`,
 				},
 				{
 					platform: "Twitter",

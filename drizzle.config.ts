@@ -1,7 +1,7 @@
 import type { Config } from "drizzle-kit";
-import { env } from "@/env.js";
+import { env } from "./src/env";
 
-import { databasePrefix } from "@/lib/constants";
+import { databasePrefix } from "./src/lib/constants";
 
 export default {
   schema: "./src/db/schema.ts",

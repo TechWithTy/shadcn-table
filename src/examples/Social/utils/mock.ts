@@ -145,7 +145,11 @@ export function generateSocialCampaignData(): CallCampaign[] {
         failed: i % 3,
         interactionsDetails,
       };
-      return { ...(r as CallCampaign), ...(fb as any) } as CallCampaign;
+      const merged: CallCampaign & Partial<SocialCampaign> = {
+        ...(r as CallCampaign),
+        ...(fb as Partial<SocialCampaign>),
+      };
+      return merged as CallCampaign;
     }
     const interactionsCount = Math.max(3, (i % 8) + 3);
     const interactionsDetails: SocialInteraction[] = Array.from({ length: interactionsCount }).map((_, idx) => {
@@ -195,6 +199,10 @@ export function generateSocialCampaignData(): CallCampaign[] {
       failed: i % 3,
       interactionsDetails,
     };
-    return { ...(r as CallCampaign), ...(li as any) } as CallCampaign;
+    const merged: CallCampaign & Partial<SocialCampaign> = {
+      ...(r as CallCampaign),
+      ...(li as Partial<SocialCampaign>),
+    };
+    return merged as CallCampaign;
   });
 }

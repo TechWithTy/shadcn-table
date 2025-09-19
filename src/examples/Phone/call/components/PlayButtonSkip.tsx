@@ -3,7 +3,8 @@
 import playAnimation from "../../../../../../../public/lottie/playButton.json";
 import Lottie from "lottie-react";
 import type { LottieRefCurrentProps } from "lottie-react";
-import React, { useState, useEffect, useRef } from "react";
+import type React from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 export interface PlayButtonSkipProps {
   audioSrc: string;
@@ -56,7 +57,9 @@ export function PlayButtonSkip({
     if (!el) return;
     try {
       el.currentTime = Math.max(0, startTime || 0);
-    } catch {}
+    } catch (e) {
+      console.error("Error setting audio start time:", e);
+    }
   }, [startTime]);
 
   // keep progress updated and clamp playback to endTime if provided
@@ -75,7 +78,10 @@ export function PlayButtonSkip({
         setProgress(1);
         return;
       }
-      const denom = Math.max(0.000001, (hasEnd ? endTime : el.duration || 0) - rangeStart);
+      const denom = Math.max(
+        0.000001,
+        (hasEnd ? endTime : el.duration || 0) - rangeStart,
+      );
       setProgress(Math.max(0, Math.min(1, (cur - rangeStart) / denom)));
     };
 
@@ -89,7 +95,7 @@ export function PlayButtonSkip({
     };
   }, [startTime, endTime]);
 
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleSeek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const el = audioRef.current;
     if (!el) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -101,18 +107,20 @@ export function PlayButtonSkip({
     const target = rangeStart + pct * Math.max(0, rangeEnd - rangeStart);
     try {
       el.currentTime = target;
-    } catch {}
+    } catch (e) {
+      console.error("Error seeking audio:", e);
+    }
     if (!isPlaying) {
-      // reflect UI immediately
       setProgress(pct);
     }
-  };
+  }, [startTime, endTime, duration, isPlaying]);
 
-  const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     setDragging(true);
     handleSeek(e);
-  };
-  const handleDragMove = (e: MouseEvent) => {
+  }, [handleSeek]);
+
+  const handleDragMove = useCallback((e: MouseEvent) => {
     if (!dragging) return;
     const el = document.getElementById("playback-track");
     if (!el) return;
@@ -127,10 +135,13 @@ export function PlayButtonSkip({
     const target = rangeStart + pct * Math.max(0, rangeEnd - rangeStart);
     try {
       audio.currentTime = target;
-    } catch {}
+    } catch (e) {
+      console.error("Error seeking audio during drag:", e);
+    }
     setProgress(pct);
-  };
-  const handleDragEnd = () => setDragging(false);
+  }, [dragging, startTime, endTime, duration]);
+
+  const handleDragEnd = useCallback(() => setDragging(false), []);
 
   useEffect(() => {
     if (!dragging) return;
@@ -140,13 +151,77 @@ export function PlayButtonSkip({
       window.removeEventListener("mousemove", handleDragMove);
       window.removeEventListener("mouseup", handleDragEnd);
     };
-  }, [dragging]);
+  }, [dragging, handleDragMove, handleDragEnd]);
+
+  // Keyboard support for the playback slider
+  const seekToPercent = useCallback(
+    (pct: number) => {
+      const el = audioRef.current;
+      if (!el) return;
+      const clamped = Math.max(0, Math.min(1, pct));
+      const rangeStart = Math.max(0, startTime || 0);
+      const hasEnd = Number.isFinite(endTime) && endTime > rangeStart;
+      const rangeEnd = hasEnd ? endTime : duration || el.duration || rangeStart;
+      const target = rangeStart + clamped * Math.max(0, rangeEnd - rangeStart);
+      try {
+        el.currentTime = target;
+      } catch (e) {
+        console.error("Error seeking audio via keyboard:", e);
+      }
+      if (!isPlaying) setProgress(clamped);
+    },
+    [startTime, endTime, duration, isPlaying],
+  );
+
+  const onTrackKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      // Provide common slider keyboard interactions
+      const SMALL_STEP = 0.05; // 5%
+      const LARGE_STEP = 0.1; // 10%
+      switch (e.key) {
+        case "ArrowLeft":
+        case "ArrowDown":
+          e.preventDefault();
+          seekToPercent(progress - SMALL_STEP);
+          break;
+        case "ArrowRight":
+        case "ArrowUp":
+          e.preventDefault();
+          seekToPercent(progress + SMALL_STEP);
+          break;
+        case "PageDown":
+          e.preventDefault();
+          seekToPercent(progress - LARGE_STEP);
+          break;
+        case "PageUp":
+          e.preventDefault();
+          seekToPercent(progress + LARGE_STEP);
+          break;
+        case "Home":
+          e.preventDefault();
+          seekToPercent(0);
+          break;
+        case "End":
+          e.preventDefault();
+          seekToPercent(1);
+          break;
+        default:
+          break;
+      }
+    },
+    [progress, seekToPercent],
+  );
 
   return (
     <div className="flex w-full flex-col items-center gap-1 py-1">
-      {audioError && <div className="text-[10px] text-red-500">{audioError}</div>}
+      {audioError ? (
+        <div className="text-[10px] text-red-500">{audioError}</div>
+      ) : null}
 
-      <h2 className="max-w-full truncate text-center text-[11px] font-semibold leading-none text-foreground" title={title}>
+      <h2
+        className="max-w-full truncate text-center font-semibold text-[11px] text-foreground leading-none"
+        title={title}
+      >
         {title}
       </h2>
 
@@ -160,19 +235,14 @@ export function PlayButtonSkip({
           ⏮ Prev
         </button>
 
-        <div
+        <button
+          type="button"
           onClick={togglePlay}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              togglePlay();
-            }
-          }}
-          role="button"
-          tabIndex={0}
-          className={`relative flex h-[52px] w-[52px] cursor-pointer items-center justify-center rounded-full p-2 transition-all duration-300 ${
+          className={`relative flex h-[52px] w-[52px] items-center justify-center rounded-full p-2 transition-all duration-300 ${
             isPlaying ? "bg-red-500/50" : "bg-green-500"
           }`}
+          aria-label={isPlaying ? "Pause" : "Play"}
+          aria-pressed={isPlaying}
         >
           <Lottie
             animationData={playAnimation}
@@ -181,7 +251,7 @@ export function PlayButtonSkip({
             lottieRef={lottieRef}
             style={{ height: 36, width: 36 }}
           />
-        </div>
+        </button>
 
         <button
           onClick={onNextCall}
@@ -193,35 +263,33 @@ export function PlayButtonSkip({
         </button>
       </div>
 
-      {/* Timeline (visible only while playing) */}
-      {isPlaying && (
+      {isPlaying ? (
         <div
           id="playback-track"
-          className="mt-1 h-2 w-full cursor-pointer rounded bg-gradient-to-r from-primary/40 via-primary/20 to-muted relative"
+          className="relative mt-1 h-2 w-full cursor-pointer rounded bg-gradient-to-r from-primary/40 via-primary/20 to-muted"
           onClick={handleSeek}
           onMouseDown={handleDragStart}
+          onKeyDown={onTrackKeyDown}
+          onKeyUp={() => { /* satisfies a11y rule and allows future hooks */ }}
           role="slider"
+          tabIndex={0}
           aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(progress * 100)}
-          title="Seek"
+          aria-valuemax={1}
+          aria-valuenow={progress}
         >
           <div
-            className="absolute left-0 top-0 h-full rounded bg-primary/70"
-            style={{ width: `${Math.max(0, Math.min(100, progress * 100))}%` }}
-          />
-          {/* Thumb */}
-          <div
-            className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-primary shadow-md ring-2 ring-primary/30"
-            style={{ left: `calc(${Math.max(0, Math.min(100, progress * 100))}% - 6px)` }}
+            className="absolute h-full bg-primary"
+            style={{ width: `${progress * 100}%` }}
           />
         </div>
-      )}
+      ) : null}
 
       <audio
         ref={audioRef}
         src={src}
-        onError={() => setAudioError("Audio file could not be loaded or is not supported.")}
+        onError={() =>
+          setAudioError("Audio file could not be loaded or is not supported.")
+        }
         preload="auto"
         className="hidden"
       >

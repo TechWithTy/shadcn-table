@@ -51,12 +51,22 @@ export interface CampaignCreationState {
 	setAreaMode: (mode: "zip" | "leadList") => void;
 	selectedLeadListId: string;
 	setSelectedLeadListId: (id: string) => void;
+	// A/B testing for lead lists (match usage in modal)
+	abTestingEnabled: boolean;
+	setAbTestingEnabled: (v: boolean) => void;
+	selectedLeadListAId: string;
+	setSelectedLeadListAId: (id: string) => void;
+	selectedLeadListBId: string;
+	setSelectedLeadListBId: (id: string) => void;
 	campaignArea: string;
 	setCampaignArea: (area: string) => void;
 	leadCount: number;
 	includeWeekends: boolean;
 	setIncludeWeekends: (v: boolean) => void;
 	setLeadCount: (count: number) => void;
+
+	// Validation helpers
+	isLeadListSelectionValid: () => boolean;
 
 	// Step 3: Timing Preferences
 	daysSelected: number;
@@ -76,6 +86,16 @@ export interface CampaignCreationState {
 	setReachOnHolidays: (v: boolean) => void;
 	countVoicemailAsAnswered: boolean;
 	setCountVoicemailAsAnswered: (v: boolean) => void;
+
+	// Dial attempt preferences per day
+	minDailyAttempts: number;
+	setMinDailyAttempts: (v: number) => void;
+	maxDailyAttempts: number;
+	setMaxDailyAttempts: (v: number) => void;
+
+	// Timezone handling
+	getTimezoneFromLeadLocation: boolean;
+	setGetTimezoneFromLeadLocation: (v: boolean) => void;
 
 	// Number Pooling (Calls/Text)
 	numberPoolingEnabled: boolean;
@@ -105,7 +125,7 @@ export interface CampaignCreationState {
 	reset: () => void;
 }
 
-export const useCampaignCreationStore = create<CampaignCreationState>((set) => ({
+export const useCampaignCreationStore = create<CampaignCreationState>((set, get) => ({
 	// Step 1: Channel Selection
 	primaryChannel: null,
 	setPrimaryChannel: (primaryChannel) => set({ primaryChannel }),
@@ -125,12 +145,27 @@ export const useCampaignCreationStore = create<CampaignCreationState>((set) => (
 	setAreaMode: (areaMode) => set({ areaMode }),
 	selectedLeadListId: "",
 	setSelectedLeadListId: (selectedLeadListId) => set({ selectedLeadListId }),
+	// A/B testing defaults
+	abTestingEnabled: false,
+	setAbTestingEnabled: (abTestingEnabled) => set({ abTestingEnabled }),
+	selectedLeadListAId: "",
+	setSelectedLeadListAId: (selectedLeadListAId) => set({ selectedLeadListAId }),
+	selectedLeadListBId: "",
+	setSelectedLeadListBId: (selectedLeadListBId) => set({ selectedLeadListBId }),
 	campaignArea: "",
 	setCampaignArea: (campaignArea) => set({ campaignArea }),
 	leadCount: 0,
 	setLeadCount: (leadCount) => set({ leadCount }),
 	includeWeekends: false,
 	setIncludeWeekends: (includeWeekends) => set({ includeWeekends }),
+
+	// Validation helpers
+	isLeadListSelectionValid: () => {
+		const s = get();
+		if (s.areaMode !== "leadList") return true;
+		if (!s.abTestingEnabled) return Boolean(s.selectedLeadListId || s.selectedLeadListAId);
+		return Boolean(s.selectedLeadListAId && s.selectedLeadListBId);
+	},
 
 	// Step 3: Timing Preferences
 	daysSelected: 7,
@@ -149,6 +184,16 @@ export const useCampaignCreationStore = create<CampaignCreationState>((set) => (
 	setReachOnHolidays: (reachOnHolidays) => set({ reachOnHolidays }),
 	countVoicemailAsAnswered: false,
 	setCountVoicemailAsAnswered: (countVoicemailAsAnswered) => set({ countVoicemailAsAnswered }),
+
+	// Dial attempt preferences
+	minDailyAttempts: 1,
+	setMinDailyAttempts: (minDailyAttempts) => set({ minDailyAttempts }),
+	maxDailyAttempts: 3,
+	setMaxDailyAttempts: (maxDailyAttempts) => set({ maxDailyAttempts }),
+
+	// Timezone handling
+	getTimezoneFromLeadLocation: true,
+	setGetTimezoneFromLeadLocation: (getTimezoneFromLeadLocation) => set({ getTimezoneFromLeadLocation }),
 
 	// Number Pooling (Calls/Text)
 	numberPoolingEnabled: false,
@@ -191,6 +236,9 @@ export const useCampaignCreationStore = create<CampaignCreationState>((set) => (
 			// Step 2
 			areaMode: "leadList",
 			selectedLeadListId: "",
+			abTestingEnabled: false,
+			selectedLeadListAId: "",
+			selectedLeadListBId: "",
 			campaignArea: "",
 			leadCount: 0,
 			includeWeekends: false,
@@ -198,19 +246,6 @@ export const useCampaignCreationStore = create<CampaignCreationState>((set) => (
 			// Step 3
 			daysSelected: 7,
 			startDate: new Date(),
-			endDate: null,
-			reachBeforeBusiness: false,
-			reachAfterBusiness: false,
-			reachOnWeekend: false,
-			reachOnHolidays: false,
-
-			// Number Pooling
-			numberPoolingEnabled: false,
-			messagingServiceSid: "",
-			senderPoolNumbersCsv: "",
-			smartEncodingEnabled: true,
-			optOutHandlingEnabled: true,
-			perNumberDailyLimit: 75,
 			availableSenderNumbers: [
 				"+15551230001",
 				"+15551230002",
@@ -219,5 +254,6 @@ export const useCampaignCreationStore = create<CampaignCreationState>((set) => (
 			],
 			selectedSenderNumbers: [],
 			numberSelectionStrategy: "round_robin",
+			getTimezoneFromLeadLocation: true,
 		}),
 }));
