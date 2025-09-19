@@ -344,6 +344,9 @@ const ChannelCustomizationStep: FC<ChannelCustomizationStepProps> = ({
 		watchedTransferType === "chat_live_person" ||
 		watchedTransferType === "appraisal";
 
+	// Normalize direct mail channel check to store representation ('email')
+	const isDirectMailChannel = primaryChannel != null && (primaryChannel as unknown as string) === "email";
+
 	return (
 		<Form {...form}>
 			<div className="flex h-full flex-col">
@@ -744,7 +747,7 @@ const ChannelCustomizationStep: FC<ChannelCustomizationStepProps> = ({
 						/>
 					)}
 
-					{primaryChannel === "directmail" && (
+					{isDirectMailChannel && (
 						<>
 							<FormField
 								control={form.control}

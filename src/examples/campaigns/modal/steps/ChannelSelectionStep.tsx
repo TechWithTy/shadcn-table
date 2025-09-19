@@ -28,17 +28,34 @@ const ChannelSelectionStep: FC<ChannelSelectionStepProps> = ({
     <div>
       <h2 className="mb-4 font-semibold text-lg">Select Primary Channel</h2>
       <div className="mb-4 flex flex-col gap-3">
-        {allChannels.map((channel) => (
-          <Button
-            key={channel}
-            onClick={() => setPrimaryChannel(channel)}
-            variant={primaryChannel === channel ? "default" : "outline"}
-            className="flex items-center justify-between capitalize"
-            type="button"
-          >
-            <span>{channel}</span>
-          </Button>
-        ))}
+        {allChannels.map((channel) => {
+          // Normalize store channel (which uses 'email' for direct mail) to UI channel label
+          type StoreChannel = "email" | "call" | "text" | "social";
+          type UiChannel = "directmail" | "call" | "text" | "social";
+          const toUi = (c: StoreChannel | null): UiChannel | null =>
+            c === "email" ? "directmail" : c;
+          const toStore = (c: UiChannel): StoreChannel =>
+            c === "directmail" ? "email" : c;
+
+          const storePrimary = primaryChannel as StoreChannel | null;
+          const uiPrimary: UiChannel | null = toUi(storePrimary);
+          const isActive = uiPrimary === channel;
+          return (
+            <Button
+              key={channel}
+              onClick={() => {
+                (setPrimaryChannel as (c: StoreChannel) => void)(
+                  toStore(channel),
+                );
+              }}
+              variant={isActive ? "default" : "outline"}
+              className="flex items-center justify-between capitalize"
+              type="button"
+            >
+              <span>{channel}</span>
+            </Button>
+          );
+        })}
       </div>
       <div className="flex justify-end gap-2">
         <Button onClick={onClose} variant="ghost" type="button">

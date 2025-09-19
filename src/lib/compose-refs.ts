@@ -10,13 +10,18 @@ type PossibleRef<T> = React.Ref<T> | undefined;
  * Set a given ref to a given value
  * This utility takes care of different types of refs: callback refs and RefObject(s)
  */
-function setRef<T>(ref: PossibleRef<T>, value: T) {
+function setRef<T>(ref: PossibleRef<T>, value: T | null): (() => void) | undefined {
   if (typeof ref === "function") {
-    return ref(value);
+    // In React 19, a ref callback can optionally return a cleanup function
+    const ret = (ref as (instance: T | null) => undefined | (() => void))(value);
+    return typeof ret === "function" ? (ret as () => void) : undefined;
   }
 
   if (ref !== null && ref !== undefined) {
-    ref.current = value;
+    // React's RefObject<T> types `current` as readonly, but at runtime React updates it.
+    // When composing refs we intentionally set `current` on mutable refs.
+    // Cast to MutableRefObject to satisfy TypeScript while preserving runtime behavior.
+    (ref as unknown as React.MutableRefObject<T | null>).current = value as unknown as T | null;
   }
 }
 
@@ -25,7 +30,7 @@ function setRef<T>(ref: PossibleRef<T>, value: T) {
  * Accepts callback refs and RefObject(s)
  */
 function composeRefs<T>(...refs: PossibleRef<T>[]): React.RefCallback<T> {
-  return (node) => {
+  return (node: T | null) => {
     let hasCleanup = false;
     const cleanups = refs.map((ref) => {
       const cleanup = setRef(ref, node);
@@ -44,7 +49,7 @@ function composeRefs<T>(...refs: PossibleRef<T>[]): React.RefCallback<T> {
         for (let i = 0; i < cleanups.length; i++) {
           const cleanup = cleanups[i];
           if (typeof cleanup === "function") {
-            cleanup();
+            (cleanup as () => void)();
           } else {
             setRef(refs[i], null);
           }
