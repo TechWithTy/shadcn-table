@@ -9,7 +9,7 @@ import {
   ListFilter,
   Trash2,
 } from "lucide-react";
-import { parseAsStringEnum, useQueryState } from "nuqs";
+import { parseAsStringEnum, useQueryState } from "../../nuqs-shared";
 import * as React from "react";
 
 import { DataTableRangeFilter } from "./data-table-range-filter";

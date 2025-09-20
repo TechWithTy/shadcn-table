@@ -9,7 +9,7 @@ import {
   Text,
   X,
 } from "lucide-react";
-import { useQueryState } from "nuqs";
+import { useQueryState } from "../../nuqs-shared";
 import * as React from "react";
 
 import { DataTableRangeFilter } from "./data-table-range-filter";

@@ -1,4 +1,4 @@
-import { createParser } from "nuqs/server";
+import { createParser } from "../nuqs-shared";
 import { z } from "zod";
 
 import { dataTableConfig } from "../config/data-table";
